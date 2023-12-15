@@ -29,7 +29,7 @@
             FontFamily="Consolas"
             FontSize="16"
             HorizontalScrollBarVisibility="Auto"
-            LineNumbersForeground="#FFBAFADB"
+            LineNumbersForeground="#8a8a87"
             ScrollViewer.HorizontalScrollBarVisibility="Auto"
             ScrollViewer.VerticalScrollBarVisibility="Auto"
             ShowLineNumbers="True"

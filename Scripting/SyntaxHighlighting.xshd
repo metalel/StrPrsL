@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<SyntaxDefinition name="Str" extensions=".str" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+
+  <Color name="Command" foreground="#d998a9" />
+  <Color name="CommandBrace" foreground="#ad2a4d" />
+  <Color name="Function" foreground="#b3ffe0" />
+  <Color name="FunctionBrace" foreground="#2f946c" />
+  <Color name="String" foreground="#d66d5b" />
+  <Color name="NumberLiteral" foreground="#7ba5db" />
+  <Color name="Seperator" foreground="#7962bd" />
+  <Color name="Parantheses" foreground="#633e7a" />
+  <Color name="Block" foreground="#f2028e" />
+
+  <RuleSet>
+    <Span color="String">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <!-- nested span for escape sequences -->
+        <Span begin="\\" end="." />
+      </RuleSet>
+    </Span>
+
+    <!-- Mark previous rule-->
+    <Rule color="Command">
+      (?&lt;=&lt;)
+      [^\(]*
+      (?=.*\()
+    </Rule>
+
+    <Rule color="Function">
+      (?&lt;=\[)
+      [^\(]*
+      (?=.*\()
+    </Rule>
+    
+    <!-- Digits -->
+    <Rule color="NumberLiteral">
+      \b0[xX][0-9a-fA-F]+  # hex number
+      |
+      (	\b\d+(\.[0-9]+)?   #number with optional floating point
+      |	\.[0-9]+           #or just starting with floating point
+      )
+      ([eE][+-]?[0-9]+)? # optional exponent
+    </Rule>
+
+    <!-- [,.;()\[\]{}+\-/%*&lt;&gt;^+~!|&amp;] -->
+    <Rule color="Seperator">
+      [,]+
+    </Rule>
+
+    <Rule color="Parantheses">
+      [\(\)]
+    </Rule>
+
+    <Rule color="CommandBrace">
+      [&lt;&gt;]
+    </Rule>
+
+    <Rule color="FunctionBrace">
+      [\[\]]
+    </Rule>
+
+    <Rule color="Block">
+      [\{\}]
+    </Rule>
+
+  </RuleSet>
+
+</SyntaxDefinition>

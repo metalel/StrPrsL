@@ -36,5 +36,15 @@ namespace StrPrsL
                 this.scriptEditor.SyntaxHighlighting = ICSharpCode.AvalonEdit.Highlighting.Xshd.HighlightingLoader.Load(reader, ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance);
             }
         }
+
+        private void LoadScriptFile(string filename)
+        {
+            LoadScript(File.ReadAllText(filename));
+        }
+
+        private void LoadScript(string script)
+        {
+            this.scriptEditor.Text = script;
+        }
     }
 }
