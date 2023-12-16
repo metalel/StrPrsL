@@ -60,6 +60,7 @@
             <Button
                 x:Name="LoadButton"
                 Width="50"
+                Click="LoadButton_Click"
                 Content="Load" />
             <Separator Width="4" Opacity="0" />
             <Button
@@ -81,19 +82,21 @@
                 <ColumnDefinition Width="205" />
                 <ColumnDefinition Width="0.2*" />
             </Grid.ColumnDefinitions>
-            <WebBrowser
-                x:Name="OutputViewer"
-                Grid.Column="0"
+            <ListBox
+                Name="scriptOutput"
+                Grid.Row="0"
                 Margin="0,0,4,0"
-                Visibility="Hidden" />
+                FontFamily="Consolas"
+                FontSize="20"
+                SelectionMode="Single" />
             <StackPanel
                 Grid.Column="1"
                 Width="200"
                 Orientation="Vertical">
                 <Button
-                    x:Name="ClearConsoleButton"
+                    x:Name="ClearOutputButton"
                     Height="25"
-                    Content="Clear Console" />
+                    Content="Clear Output" />
                 <Separator Width="4" Opacity="0" />
                 <Button
                     x:Name="TogglePauseButton"

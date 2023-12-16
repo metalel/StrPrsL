@@ -23,9 +23,19 @@ namespace StrPrsL
     /// </summary>
     public partial class MainWindow : Window
     {
+        public Microsoft.Win32.OpenFileDialog OpenFileDialog;
+        public bool? OpenFileResult;
+
+        private Logger Logger;
+
         public MainWindow()
         {
             InitializeComponent();
+            Logger = new Logger(this);
+            OpenFileDialog = new Microsoft.Win32.OpenFileDialog();
+            OpenFileDialog.FileName = "Script";
+            OpenFileDialog.DefaultExt = ".str";
+            OpenFileDialog.Filter = "Str scripts (.str)|*.str";
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -37,14 +47,24 @@ namespace StrPrsL
             }
         }
 
+        private void LoadScript(string script)
+        {
+            this.scriptEditor.Text = script;
+        }
+
         private void LoadScriptFile(string filename)
         {
             LoadScript(File.ReadAllText(filename));
         }
 
-        private void LoadScript(string script)
+        private void LoadButton_Click(object sender, RoutedEventArgs e)
         {
-            this.scriptEditor.Text = script;
+            OpenFileResult = OpenFileDialog.ShowDialog();
+
+            if (OpenFileResult.HasValue && OpenFileResult.Value == true)
+            {
+                LoadScriptFile(OpenFileDialog.FileName);
+            }
         }
     }
 }

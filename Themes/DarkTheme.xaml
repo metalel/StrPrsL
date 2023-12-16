@@ -243,29 +243,6 @@
                                     <Grid.Resources>
                                         <ControlTemplate x:Key="PreviousButtonTemplate" TargetType="{x:Type Button}">
                                             <Grid Cursor="Hand">
-                                                <VisualStateManager.VisualStateGroups>
-                                                    <VisualStateGroup x:Name="CommonStates">
-                                                        <VisualState x:Name="Normal" />
-                                                        <VisualState x:Name="MouseOver">
-                                                            <Storyboard>
-                                                                <ColorAnimation
-                                                                    Storyboard.TargetName="path"
-                                                                    Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)"
-                                                                    To="#FF73A9D8"
-                                                                    Duration="0" />
-                                                            </Storyboard>
-                                                        </VisualState>
-                                                        <VisualState x:Name="Disabled">
-                                                            <Storyboard>
-                                                                <DoubleAnimation
-                                                                    Storyboard.TargetName="path"
-                                                                    Storyboard.TargetProperty="(Shape.Fill).(Brush.Opacity)"
-                                                                    To=".5"
-                                                                    Duration="0" />
-                                                            </Storyboard>
-                                                        </VisualState>
-                                                    </VisualStateGroup>
-                                                </VisualStateManager.VisualStateGroups>
                                                 <Rectangle
                                                     Fill="#11E5EBF1"
                                                     Opacity="1"
@@ -282,10 +259,6 @@
                                                         Fill="#FF333333"
                                                         Stretch="Fill" />
                                                 </Grid>
-                                            </Grid>
-                                        </ControlTemplate>
-                                        <ControlTemplate x:Key="NextButtonTemplate" TargetType="{x:Type Button}">
-                                            <Grid Cursor="Hand">
                                                 <VisualStateManager.VisualStateGroups>
                                                     <VisualStateGroup x:Name="CommonStates">
                                                         <VisualState x:Name="Normal" />
@@ -309,6 +282,10 @@
                                                         </VisualState>
                                                     </VisualStateGroup>
                                                 </VisualStateManager.VisualStateGroups>
+                                            </Grid>
+                                        </ControlTemplate>
+                                        <ControlTemplate x:Key="NextButtonTemplate" TargetType="{x:Type Button}">
+                                            <Grid Cursor="Hand">
                                                 <Rectangle
                                                     Fill="#11E5EBF1"
                                                     Opacity="1"
@@ -325,10 +302,41 @@
                                                         Fill="#FF333333"
                                                         Stretch="Fill" />
                                                 </Grid>
+                                                <VisualStateManager.VisualStateGroups>
+                                                    <VisualStateGroup x:Name="CommonStates">
+                                                        <VisualState x:Name="Normal" />
+                                                        <VisualState x:Name="MouseOver">
+                                                            <Storyboard>
+                                                                <ColorAnimation
+                                                                    Storyboard.TargetName="path"
+                                                                    Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)"
+                                                                    To="#FF73A9D8"
+                                                                    Duration="0" />
+                                                            </Storyboard>
+                                                        </VisualState>
+                                                        <VisualState x:Name="Disabled">
+                                                            <Storyboard>
+                                                                <DoubleAnimation
+                                                                    Storyboard.TargetName="path"
+                                                                    Storyboard.TargetProperty="(Shape.Fill).(Brush.Opacity)"
+                                                                    To=".5"
+                                                                    Duration="0" />
+                                                            </Storyboard>
+                                                        </VisualState>
+                                                    </VisualStateGroup>
+                                                </VisualStateManager.VisualStateGroups>
                                             </Grid>
                                         </ControlTemplate>
                                         <ControlTemplate x:Key="HeaderButtonTemplate" TargetType="{x:Type Button}">
                                             <Grid Cursor="Hand">
+                                                <ContentPresenter
+                                                    x:Name="buttonContent"
+                                                    Margin="1,4,1,9"
+                                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                    Content="{TemplateBinding Content}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                    TextElement.Foreground="#FF333333" />
                                                 <VisualStateManager.VisualStateGroups>
                                                     <VisualStateGroup x:Name="CommonStates">
                                                         <VisualState x:Name="Normal" />
@@ -352,14 +360,6 @@
                                                         </VisualState>
                                                     </VisualStateGroup>
                                                 </VisualStateManager.VisualStateGroups>
-                                                <ContentPresenter
-                                                    x:Name="buttonContent"
-                                                    Margin="1,4,1,9"
-                                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                    Content="{TemplateBinding Content}"
-                                                    ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                    TextElement.Foreground="#FF333333" />
                                             </Grid>
                                         </ControlTemplate>
                                     </Grid.Resources>
@@ -1086,7 +1086,7 @@
                                     Data="M 1,1.5 L 4.5,5 L 8,1.5"
                                     SnapsToDevicePixels="false"
                                     Stroke="{StaticResource ControlGlythColour}"
-                                    StrokeThickness="2" /> 
+                                    StrokeThickness="2" />
                                 <!--  the r xd  -->
                             </Grid>
                             <ContentPresenter
