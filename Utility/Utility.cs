@@ -8,6 +8,11 @@ using System.Windows.Media;
 
 namespace StrPrsL.Utility
 {
+    public static class Extensions
+    {
+
+    }
+
     public static class Helpers
     {
         public static Visual GetDescendantByType(Visual element, Type type)
