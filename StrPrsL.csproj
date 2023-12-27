@@ -23,6 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="CoreAudioApi">
+      <HintPath>E:\OldDesktop\Apps\CoreAudioApi\CoreAudioApi.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Properties\Settings.Designer.cs">
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>
