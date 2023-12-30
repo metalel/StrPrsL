@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using StrPrsL.Utility;
 
 namespace StrPrsL.Scripting
 {
@@ -96,6 +97,16 @@ namespace StrPrsL.Scripting
             /// The amount of characters that offset this instruction from its line number.
             /// </summary>
             public int LineOffset;
+            /// <summary>
+            /// C# instructions for this intermediate instruction.
+            /// </summary>
+            public Execution Execution;
+            /// <summary>
+            /// Unique identifier for this instruction.
+            /// </summary>
+            public int GUID;
+
+            private string aggregationBuffer;
 
             /// <summary>
             /// A new blank intermediate instruction.
@@ -107,6 +118,7 @@ namespace StrPrsL.Scripting
                 Parameters = new List<Intermediate>();
                 Type = type;
                 Block = new List<Intermediate>();
+                Execution = null;
             }
 
             /// <summary>
@@ -120,6 +132,7 @@ namespace StrPrsL.Scripting
                 Parameters = new List<Intermediate>();
                 Type = type;
                 Block = new List<Intermediate>();
+                Execution = null;
             }
 
             /// <summary>
@@ -144,6 +157,26 @@ namespace StrPrsL.Scripting
                     LineOffset = lineoffset.Value;
                 }
                 return this;
+            }
+
+            /// <summary>
+            /// Quick access to <see cref="Parameters"/> of this instruction.
+            /// </summary>
+            /// <param name="index">The index of the parameter.</param>
+            /// <returns>Parameter's <see cref="Interpreter.Execution"/>. <see cref="Func{object}"/></returns>
+            public Func<object> GetParam(int index)
+            {
+                return Parameters[index].Execution.Instruction;
+            }
+
+            public string AggregateParams()
+            {
+                aggregationBuffer = "";
+                for (int i = 0; i < Parameters.Count; i++)
+                {
+                    aggregationBuffer += Parameters[i].Execution.Instruction.Invoke()?.ToString();
+                }
+                return aggregationBuffer;
             }
 
             /// <summary>
@@ -234,37 +267,16 @@ namespace StrPrsL.Scripting
             }
 
             /// <summary>
-            /// Convert <see cref="Intermediate"/> to <see cref="Interpreter.Execution"/> for compilation.
-            /// </summary>
-            /// <returns><see cref="Interpreter.Execution"/> object that contains C# instruction(s) for executing the script instruction(s).</returns>
-            public Execution Execution()
-            {
-                Func<object[], object> result = null;
-
-                switch (InstructionName.ToLower())
-                {
-                    case "setmouse":
-                        //result = (oa, o) => ;
-                        break;
-                    default:
-                        Exceptions.Throw(new Exceptions.ParsingException($"No instruction found by name \"{InstructionName}\".", $"Instruction \"{InstructionName}\" does not exist.", Raw, Line, LineOffset));
-                        break;
-                }
-
-                return new Execution(result);
-            }
-
-            /// <summary>
             /// Type of an intermediate instruction.
             /// </summary>
             public enum InstructionType
             {
                 /// <summary>
-                /// Indicative of a parsing error since no <see cref="InstructionType"/> was successfully assigned in interpretation-time.
+                /// Indicates a parsing error since no <see cref="InstructionType"/> was successfully assigned in interpretation-time.
                 /// </summary>
                 None,
                 /// <summary>
-                /// An instruction to be executed without a return value or further processing after returning.
+                /// An instruction to be executed without a return value nor further processing after returning.
                 /// </summary>
                 Command,
                 /// <summary>
@@ -279,14 +291,57 @@ namespace StrPrsL.Scripting
         }
 
         /// <summary>
+        /// Represents a scope of the script. Respectively consisting of <see cref="Intermediate.Block"/>s and the script itself as the base <see cref="Scope"/>.
+        /// </summary>
+        public class Scope
+        {
+            public int Identifier;
+            public Execution[] Executions;
+            public int LineNumber;
+            public string Initiator;
+
+            public Scope(int identifier, Execution[] executions, string initiator)
+            {
+                Identifier = identifier;
+                Executions = executions;
+                Initiator = initiator;
+                LineNumber = 0;
+            }
+
+            /// <summary>
+            /// Gets the current <see cref="Execution"/> from <see cref="Executions"/> with the index <see cref="LineNumber"/>.
+            /// </summary>
+            public Execution CurrentLine
+            {
+                get
+                {
+                    return Executions[LineNumber];
+                }
+            }
+        }
+
+        /// <summary>
+        /// A script variable in memory.
+        /// </summary>
+        public class Variable
+        {
+            public string Identifier;
+            public object Value;
+
+            public Variable(string identifier, object value)
+            {
+                Identifier = identifier;
+                Value = value;
+            }
+        }
+
+        /// <summary>
         /// Interpret the entirety of the script into an <see cref="Intermediate"/> array to be processed to C# instructions.
         /// </summary>
         /// <param name="script">The entire script in string form.</param>
         /// <returns><see cref="Intermediate"/> array.</returns>
         public static Intermediate[] Interpret(string script)
         {
-            throw new NotImplementedException("Fix Line and LineNumber not working on .Info()");
-
             List<Intermediate> result = new List<Intermediate>();
 
             Stack<Intermediate> captureStack = new Stack<Intermediate>();
@@ -297,6 +352,7 @@ namespace StrPrsL.Scripting
             char currentChar;
             bool capturingString = false;
             bool escapeNextChar = false;
+            int lineNumber;
             //Error checking and exception handling
             string captureSinceSuccess = "";
 
@@ -310,6 +366,8 @@ namespace StrPrsL.Scripting
                 {
                     continue;
                 }
+
+                lineNumber = GetLineNumber(script, i);
 
                 //Capture currently processed character
                 currentCapture += currentChar;
@@ -338,12 +396,12 @@ namespace StrPrsL.Scripting
                             {
                                 if (lastBlockCandidate != null)
                                 {
-                                    lastBlockCandidate.Block.Add(new Intermediate(Intermediate.InstructionType.Command).Info(captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                    lastBlockCandidate.Block.Add(new Intermediate(Intermediate.InstructionType.Command).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     captureStack.Push(lastBlockCandidate.Block[lastBlockCandidate.Block.Count - 1]);
                                 }
                                 else
                                 {
-                                    captureStack.Push(new Intermediate(Intermediate.InstructionType.Command).Info(captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                    captureStack.Push(new Intermediate(Intermediate.InstructionType.Command).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                 }
                                 currentCapture = RemoveSequenceLast(currentCapture, Syntax.CommandBegin);
                             }
@@ -352,7 +410,7 @@ namespace StrPrsL.Scripting
                                 currentCapture = RemoveSequenceLast(currentCapture, Syntax.ParameterFieldBegin);
                                 if (currentCapture == "")
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No name provided for instruction.", "Instruction name must be provided.", captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No name provided for instruction.", "Instruction name must be provided.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     return null;
                                 }
                                 if (captureStack.TryPeek(out currentIntermediate))
@@ -361,7 +419,7 @@ namespace StrPrsL.Scripting
                                 }
                                 else
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No previous instruction found to attach this parameter field.", "Parameter fields must be attached to an instruction. E.g.: a command or a function", captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No previous instruction found to attach this parameter field.", "Parameter fields must be attached to an instruction. E.g.: a command or a function", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     return null;
                                 }
                                 currentCapture = "";
@@ -375,11 +433,11 @@ namespace StrPrsL.Scripting
                                 {
                                     if (captureStack.TryPeek(out currentIntermediate))
                                     {
-                                        currentIntermediate.Parameters.Add(new Intermediate(currentCapture, Intermediate.InstructionType.String).Info(captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                        currentIntermediate.Parameters.Add(new Intermediate(currentCapture, Intermediate.InstructionType.String).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     }
                                     else
                                     {
-                                        Exceptions.Throw(new Exceptions.SyntaxException("No previous parameter field found to attach this parameter.", "Parameters must be attached to parameter field.", captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                        Exceptions.Throw(new Exceptions.SyntaxException("No previous parameter field found to attach this parameter.", "Parameters must be attached to parameter field.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                         return null;
                                     }
                                 }
@@ -394,11 +452,11 @@ namespace StrPrsL.Scripting
                                 {
                                     if (captureStack.TryPeek(out currentIntermediate))
                                     {
-                                        currentIntermediate.Parameters.Add(new Intermediate(currentCapture, Intermediate.InstructionType.String).Info(captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                        currentIntermediate.Parameters.Add(new Intermediate(currentCapture, Intermediate.InstructionType.String).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     }
                                     else
                                     {
-                                        Exceptions.Throw(new Exceptions.SyntaxException("No previous parameter field to close.", "A parameter field must begin before a parameter field ending.", captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                        Exceptions.Throw(new Exceptions.SyntaxException("No previous parameter field to close.", "A parameter field must begin before a parameter field ending.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                         return null;
                                     }
                                 }
@@ -418,7 +476,7 @@ namespace StrPrsL.Scripting
                                 }
                                 else
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No command was provided before ending command.", "Expected \"<\" before \">\".", captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No command was provided before ending command.", "Expected \"<\" before \">\".", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     return null;
                                 }
                                 currentCapture = "";
@@ -428,12 +486,12 @@ namespace StrPrsL.Scripting
                                 currentCapture = RemoveSequenceLast(currentCapture, Syntax.FunctionBegin);
                                 if (captureStack.TryPeek(out currentIntermediate))
                                 {
-                                    captureStack.Push(new Intermediate(Intermediate.InstructionType.Function).Info(captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                    captureStack.Push(new Intermediate(Intermediate.InstructionType.Function).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     currentIntermediate.Parameters.Add(captureStack.Peek());
                                 }
                                 else
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No instruction was provided for function to be assigned to.", "Functions must be attached to the parameter field of another instruction.", captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No instruction was provided for function to be assigned to.", "Functions must be attached to the parameter field of another instruction.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     return null;
                                 }
                                 currentCapture = "";
@@ -443,7 +501,7 @@ namespace StrPrsL.Scripting
                                 currentCapture = RemoveSequenceLast(currentCapture, Syntax.FunctionEnd);
                                 if (!captureStack.TryPop(out currentIntermediate))
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No function was provided before ending function.", "Expected \"[\" before \"]\".", captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No function was provided before ending function.", "Expected \"[\" before \"]\".", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     return null;
                                 }
                                 currentIntermediate.Info(captureSinceSuccess, null, null);
@@ -454,7 +512,7 @@ namespace StrPrsL.Scripting
                                 currentCapture = RemoveSequenceLast(currentCapture, Syntax.BlockBegin);
                                 if (currentIntermediate == null)
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No command was provided to attach this block.", "Expected a command before the block was declared.", captureSinceSuccess, GetLineNumber(script, i), GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No command was provided to attach this block.", "Expected a command before the block was declared.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
                                     return null;
                                 }
                                 lastBlockCandidate = currentIntermediate;
@@ -483,9 +541,9 @@ namespace StrPrsL.Scripting
         /// </summary>
         public class Execution
         {
-            public Func<object[], object> Instruction;
+            public Func<object> Instruction;
 
-            public Execution(Func<object[], object> instruction)
+            public Execution(Func<object> instruction)
             {
                 Instruction = instruction;
             }
@@ -495,12 +553,190 @@ namespace StrPrsL.Scripting
         /// Compile an array of <see cref="Intermediate"/> objects to C# instructions (<see cref="Execution"/>).
         /// </summary>
         /// <param name="intermediates"><see cref="Intermediate"/> array.<br/><seealso cref="Interpret(string)"/></param>
-        /// <returns><c>Func&lt;object[], object&gt;</c><br/><see cref="Func{object[], object}"/></returns>
+        /// <returns><c>Func&lt;object&gt;[]</c><br/><see cref="Func{object}"/></returns>
         public static Execution[] Compile(Intermediate[] intermediates)
         {
             List<Execution> result = new List<Execution>();
 
+            for (int i = 0; i < intermediates.Length; i++)
+            {
+                Execution buffer = Compile(intermediates[i]);
+                if (buffer != null)
+                {
+                    result.Add(buffer);
+                }
+            }
+
             return result.ToArray();
+        }
+
+        /// <summary>
+        /// Compile an <see cref="Intermediate"/> object to C# instructions (<see cref="Execution"/>).
+        /// </summary>
+        /// <param name="intermediates"><see cref="Intermediate"/> object.<br/><seealso cref="Interpret(string)"/></param>
+        /// <returns><c>Func&lt;object&gt;</c><br/><see cref="Func{object}"/></returns>
+        public static Execution Compile(Intermediate intermediate)
+        {
+            Func<object> result = null;
+
+            Execution executionBuffer;
+
+            for (int i = 0; i < intermediate.Parameters.Count; i++)
+            {
+                if (intermediate.Parameters[i].Execution == null)
+                {
+                    executionBuffer = Compile(intermediate.Parameters[i]);
+                    if (executionBuffer != null)
+                    {
+                        intermediate.Parameters[i].Execution = executionBuffer;
+                    }
+                }
+            }
+
+            for (int i = 0; i < intermediate.Block.Count; i++)
+            {
+                if (intermediate.Block[i].Execution == null)
+                {
+                    executionBuffer = Compile(intermediate.Block[i]);
+                    if (executionBuffer != null)
+                    {
+                        intermediate.Block[i].Execution = executionBuffer;
+                    }
+                }
+            }
+            
+            if (intermediate.Type == Intermediate.InstructionType.String)
+            {
+                result = () => { return intermediate.InstructionName; };
+            }
+            else if (intermediate.Type == Intermediate.InstructionType.Command)
+            {
+                switch (intermediate.InstructionName.ToLower())
+                {
+                    case "setmouse":
+                        result = () =>
+                        {
+                            Functions.SetMouse(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate), intermediate.GetParam(1).Invoke().HandledCast<int>(intermediate));
+                            return null;
+                        };
+                        break;
+                    case "print":
+                        result = () =>
+                        {
+                            Functions.Print(intermediate);
+                            return null;
+                        };
+                        break;
+                    case "wait":
+                        result = () =>
+                        {
+                            MainWindow.Instance.SetLineProgression(false);
+                            if (!Functions.WaitInitialized)
+                            {
+                                Functions.StartWait();
+                                MainWindow.Instance.PostInterruptionList.Add(Functions.StopWait);
+                            }
+                            if (Functions.IsWaitComplete(intermediate.GetParam(0).Invoke().HandledCast<long>(intermediate) * TimeSpan.TicksPerMillisecond))
+                            {
+                                Functions.StopWait();
+                                MainWindow.Instance.SetLineProgression(true);
+                            }
+                            return null;
+                        };
+                        break;
+                    case "if":
+                        int guid = intermediate.GetHashCode();
+                        intermediate.GUID = guid;
+                        MainWindow.Instance.AddScope(new Scope(guid, intermediate.Block.Select(i => i.Execution).ToArray(), intermediate.Raw));
+                        result = () =>
+                        {
+                            if (intermediate.GetParam(0).Invoke().HandledCast<bool>(intermediate) == true)
+                            {
+                                MainWindow.Instance.ProgressCurrentScope();
+                                MainWindow.Instance.SwitchScope(guid, true);
+                                MainWindow.Instance.ScopedInThisTick = true;
+                            }
+                            return null;
+                        };
+                        break;
+                    case "else":
+                        result = () =>
+                        {
+                            //Hook to the last "if" compiled? Store last "if" compiled in a variable then hook to it here
+                            return null;
+                        };
+                        break;
+                    case "cvar":
+                        result = () =>
+                        {
+                            Functions.CreateVariable(intermediate.GetParam(0).Invoke().ToString(), intermediate.GetParam(1).Invoke(), intermediate);
+                            return null;
+                        };
+                        break;
+                    case "svar":
+                        result = () =>
+                        {
+                            Functions.GetVariable(intermediate.GetParam(0).Invoke().ToString(), intermediate).Value = intermediate.GetParam(1).Invoke();
+                            return null;
+                        };
+                        break;
+                    case "start":
+                        MainWindow.Instance.RegisterStartScope(new Scope(MainWindow.Instance.StartScopeID, intermediate.Block.Select(i => i.Execution).ToArray(), intermediate.Raw));
+                        result = null;
+                        break;
+                    case "stop":
+                        MainWindow.Instance.RegisterStopScope(new Scope(MainWindow.Instance.StopScopeID, intermediate.Block.Select(i => i.Execution).ToArray(), intermediate.Raw));
+                        result = null;
+                        break;
+                    default:
+                        Exceptions.Throw(new Exceptions.ParsingException($"No command found by name \"{intermediate.InstructionName}\".", $"Command \"{intermediate.InstructionName}\" does not exist.", intermediate.Raw, intermediate.Line, intermediate.LineOffset));
+                        break;
+                }
+            }
+            else if (intermediate.Type == Intermediate.InstructionType.Function)
+            {
+                switch (intermediate.InstructionName.ToLower())
+                {
+                    case "hotkey":
+                        result = () =>
+                        {
+                            return Functions.TestKey(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate).HandledCast<System.Windows.Input.Key>(intermediate));
+                        };
+                        break;
+                    case "math":
+                        result = () =>
+                        {
+                            return Functions.Math(intermediate.AggregateParams(), intermediate);
+                        };
+                        break;
+                    case "var":
+                        result = () =>
+                        {
+                            return Functions.GetVariable(intermediate.GetParam(0).Invoke().ToString(), intermediate)?.Value;
+                        };  
+                        break;
+                    case "equals":
+                        result = () =>
+                        {
+                            return Functions.IsEqual(intermediate.GetParam(0).Invoke(), intermediate.GetParam(1).Invoke());
+                        };
+                        break;
+                    case "long":
+                        result = () =>
+                        {
+                            return intermediate.GetParam(0).Invoke().HandledCast<long>(intermediate);
+                        };
+                        break;
+                    default:
+                        Exceptions.Throw(new Exceptions.ParsingException($"No function found by name \"{intermediate.InstructionName}\".", $"Function \"{intermediate.InstructionName}\" does not exist.", intermediate.Raw, intermediate.Line, intermediate.LineOffset));
+                        break;
+                }
+            }
+            if (result == null)
+            {
+                return null;
+            }
+            return new Execution(result);
         }
 
         /// <summary>
@@ -536,7 +772,7 @@ namespace StrPrsL.Scripting
                     return index - crIndex;
                 }
             }
-            return int.MinValue;
+            return index;
         }
 
         /// <summary>

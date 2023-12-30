@@ -17,7 +17,8 @@ namespace StrPrsL.Scripting
         /// <param name="exception">The exception data.</param>
         public static void Throw(ScriptException exception)
         {
-            throw new NotImplementedException("Implement exception handling!");
+            MainWindow.Instance.StopScriptExecution();
+            MainWindow.Instance.NotifyException(exception);
         }
 
         /// <summary>
@@ -81,6 +82,22 @@ namespace StrPrsL.Scripting
         }
 
         /// <summary>
+        /// A general runtime script exception. This is the base class for other runtime script exception types.
+        /// </summary>
+        public class RuntimeException : ScriptException
+        {
+            public override string Type()
+            {
+                return "Runtime general";
+            }
+
+            public RuntimeException(string message, string information, string raw, int? line = null, int? lineOffset = null) : base(message, information, raw, line, lineOffset)
+            {
+
+            }
+        }
+
+        /// <summary>
         /// A syntax-based exception. Indicates the user has made an error in writing the script.
         /// </summary>
         public class SyntaxException : ScriptException
@@ -107,6 +124,22 @@ namespace StrPrsL.Scripting
             }
 
             public ParsingException(string message, string information, string raw, int? line = null, int? lineOffset = null) : base(message, information, raw, line, lineOffset)
+            {
+
+            }
+        }
+
+        /// <summary>
+        /// A runtime type exception. Indicates that the provided variable type could not be interpreted as another type.
+        /// </summary>
+        public class TypeException : RuntimeException
+        {
+            public override string Type()
+            {
+                return "Variable type";
+            }
+
+            public TypeException(string message, string information, string raw, int? line = null, int? lineOffset = null) : base(message, information, raw, line, lineOffset)
             {
 
             }

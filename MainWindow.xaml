@@ -42,6 +42,7 @@
             <Button
                 x:Name="StartButton"
                 Width="96"
+                Click="StartButton_Click"
                 Content="Start" />
             <Separator Width="4" Opacity="0" />
             <CheckBox
@@ -49,6 +50,14 @@
                 HorizontalContentAlignment="Right"
                 VerticalContentAlignment="Center"
                 Content="Loop"
+                IsChecked="True">
+            </CheckBox>
+            <Separator Width="4" Opacity="0" />
+            <CheckBox
+                x:Name="BlockThread"
+                HorizontalContentAlignment="Right"
+                VerticalContentAlignment="Center"
+                Content="Block script thread for UI"
                 IsChecked="True">
             </CheckBox>
             <Separator Width="10" Margin="5" />
@@ -72,6 +81,18 @@
                 x:Name="StatusIndicator"
                 Width="25"
                 Fill="Green" />
+            <Separator Width="10" Margin="5" />
+            <Label
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Content="Stop Loop Key:" />
+            <TextBox
+                x:Name="StopLoopButton"
+                Width="75"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                IsReadOnly="True"
+                KeyUp="StopLoopButton_KeyUp" />
         </StackPanel>
         <Grid
             x:Name="BottomPanel"
@@ -96,6 +117,7 @@
                 <Button
                     x:Name="ClearOutputButton"
                     Height="25"
+                    Click="ClearOutputButton_Click"
                     Content="Clear Output" />
                 <Separator Width="4" Opacity="0" />
                 <Button
@@ -119,7 +141,7 @@
                         Grid.Column="1"
                         ShowButtonSpinner="False"
                         TextAlignment="Center"
-                        Value="1" />
+                        Value="0" />
                 </Grid>
                 <Separator Width="4" Opacity="0" />
                 <Button x:Name="ThemeColorButton" Content="Theme Color" />
@@ -148,7 +170,10 @@
                     Grid.Row="0"
                     Content="Status"
                     IsChecked="True" />
-                <TextBlock Grid.Row="1" Text="Status display" />
+                <TextBlock
+                    Name="StatusDisplay"
+                    Grid.Row="1"
+                    Text="Status display" />
             </Grid>
         </Grid>
     </Grid>

@@ -9,7 +9,7 @@ using StrPrsL.Utility;
 
 namespace StrPrsL
 {
-    internal class Logger
+    public class Logger
     {
         private MainWindow owner;
 
@@ -18,6 +18,8 @@ namespace StrPrsL
         private bool autoScroll;
         private ScrollViewer outputScrollViewer;
         private ScrollBar outputScrollBar;
+
+        private string aggregatedMessageBuffer;
 
         public Logger(MainWindow owner)
         {
@@ -43,6 +45,26 @@ namespace StrPrsL
             {
                 outputScrollViewer.ScrollToBottom();
             }
+
+            if (owner.scriptOutput.Items.Count > MainWindow.Instance.MessageLimit)
+            {
+                owner.scriptOutput.Items.RemoveAt(0);
+            }
+        }
+
+        public void AggregatedLog(Action onClick = null, params object[] parameters)
+        {
+            aggregatedMessageBuffer = "";
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                aggregatedMessageBuffer += parameters[i].ToString();
+                if (i != parameters.Length - 1)
+                {
+                    aggregatedMessageBuffer += Environment.NewLine;
+                }
+            }
+
+            Log(aggregatedMessageBuffer, onClick);
         }
 
         public void Clear()
