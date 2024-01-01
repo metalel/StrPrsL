@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Media;
 using System.Windows.Input;
+using StrPrsL.Utility;
 
 namespace StrPrsL.Scripting
 {
@@ -32,7 +33,7 @@ namespace StrPrsL.Scripting
 
         private static DataTable mathDataTable = new DataTable();
 
-        //Global Buffers
+        //Shared Buffers
         private static int intBuffer;
         private static bool boolBuffer;
         private static string stringBuffer;
@@ -40,14 +41,10 @@ namespace StrPrsL.Scripting
         private static VirtualKeyShort virtualKeyBuffer;
         private static int forLoopIndexBuffer;
         private static Interpreter.Variable variableSearchBuffer;
+        private static MainWindow.Message messageBuffer;
 
         //Sleep-Wait Variables
-        private static long waitStartTicks;
-        public static bool WaitInitialized
-        {
-            get;
-            private set;
-        }
+        public static WaitingManager WaitingManager = new WaitingManager();
 
         //Pixel Variables
         private static IntPtr hdc;
@@ -56,9 +53,6 @@ namespace StrPrsL.Scripting
         //Audio Player Variables
         private static SoundPlayer SoundPlayer;
         private static bool SoundPlayerCreated = false;
-
-        private static bool bypassNullCheck;
-
         private static MMDevice currentDevice = null;
 
         public static bool GetActionTrigger()
@@ -70,22 +64,6 @@ namespace StrPrsL.Scripting
         public static string GetUniqueID()
         {
             return Guid.NewGuid().ToString("N");
-        }
-
-        public static void StartWait()
-        {
-            WaitInitialized = true;
-            waitStartTicks = DateTime.Now.Ticks;
-        }
-
-        public static bool IsWaitComplete(long length)
-        {
-            return DateTime.Now.Ticks >= waitStartTicks + length;
-        }
-
-        public static void StopWait()
-        {
-            WaitInitialized = false;
         }
 
         #region Void-Types
@@ -206,21 +184,14 @@ namespace StrPrsL.Scripting
             }
         }
 
-        private static MainWindow.Message messageBuffer;
-        public static void Print(Interpreter.Intermediate intermediate)
+        public static void Print(string message, Interpreter.Intermediate sender)
         {
-            stringBuffer = "";
-
-            for (int i = 0; i < intermediate.Parameters.Count; i++)
+            messageBuffer = new MainWindow.Message(message, null);
+            if (sender != null)
             {
-                stringBuffer += intermediate.GetParam(i).Invoke().ToString();
-                if (i != intermediate.Parameters.Count - 1)
-                {
-                    stringBuffer += Environment.NewLine;
-                }
+                messageBuffer.OnClick = () => MainWindow.Instance.FocusScript(sender.Line, sender.LineOffset);
             }
 
-            messageBuffer = new MainWindow.Message(stringBuffer, () => MainWindow.Instance.FocusScript(intermediate.Line, intermediate.LineOffset));
             if (MainWindow.Instance.BlockThreadForUI)
             {
                 MainWindow.Instance.MessageBlockedCollection.Add(messageBuffer);

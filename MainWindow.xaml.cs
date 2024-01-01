@@ -17,6 +17,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using ICSharpCode.AvalonEdit;
 using StrPrsL.Scripting;
+using StrPrsL.Utility;
 using System.Collections.Concurrent;
 
 namespace StrPrsL
@@ -29,12 +30,14 @@ namespace StrPrsL
         #region Setup
         public static MainWindow Instance;
 
-        private System.Windows.Threading.DispatcherTimer dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
+        private System.Windows.Threading.DispatcherTimer dispatcherTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Normal);
         private Microsoft.Win32.OpenFileDialog OpenFileDialog;
         private bool? OpenFileResult;
 
         private int StopLoopKeyID = 93;
         private Key StopLoopKey = Key.F4;
+
+        private WaitingManager WaitingManager = new WaitingManager();
 
         #region ScriptExecution
         public bool LoopEnabled;
@@ -89,7 +92,13 @@ namespace StrPrsL
         {
             get;
             private set;
-        }
+        } = true;
+
+        public bool LineExecution
+        {
+            get;
+            private set;
+        } = true;
         #endregion
 
         public Logger Logger
@@ -102,7 +111,7 @@ namespace StrPrsL
         {
             get;
             private set;
-        } = 150;
+        } = 64;
 
         public MainWindow()
         {
@@ -125,7 +134,7 @@ namespace StrPrsL
             OpenFileDialog.Filter = "Str scripts (.str)|*.str";
 
             dispatcherTimer.Tick += new EventHandler(dispatcherTimer_Tick);
-            dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 0);
+            dispatcherTimer.Interval = new TimeSpan(0, 0, 0, 0, 1);
             dispatcherTimer.Start();
         }
 
@@ -151,6 +160,15 @@ namespace StrPrsL
                 this.scriptEditor.SyntaxHighlighting = ICSharpCode.AvalonEdit.Highlighting.Xshd.HighlightingLoader.Load(reader, ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance);
             }
             DisplayStopLoopKeyName();
+            LoadScriptFile("C:\\Users\\oyunz\\Desktop\\debug.str");
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (scriptExecutionThread != null && scriptExecutionThread.IsAlive)
+            {
+                StopScriptExecution();
+            }
         }
 
         private void LoadButton_Click(object sender, RoutedEventArgs e)
@@ -213,6 +231,20 @@ namespace StrPrsL
         {
             while (!cancelExecutionThread)
             {
+                if (WaitingManager.WaitInitialized)
+                {
+                    if (WaitingManager.IsWaitComplete(LineInterval * TimeSpan.TicksPerMillisecond))
+                    {
+                        SetLineProgression(true);
+                        SetLineExecution(true);
+                        WaitingManager.StopWait();
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+
                 if (CurrentScope.LineNumber >= CurrentScope.Executions.Length)
                 {
                     CurrentScope.LineNumber = 0;
@@ -232,28 +264,37 @@ namespace StrPrsL
 
                 if (!regressedOnThisTick)
                 {
-                    CurrentScope.CurrentLine.Instruction.Invoke();
+                    if (LineExecution)
+                    {
+                        CurrentScope.CurrentLine.Instruction.Invoke();
+                    }
                     if (ProgressToNextLine && !ScopedInThisTick)
                     {
                         CurrentScope.LineNumber++;
                     }
                 }
-                else
-                {
-                    regressedOnThisTick = false;
-                }
 
                 if (ProgressToNextLine)
                 {
-                    if (LineInterval > 0)
+                    if (LineInterval > 0 && !regressedOnThisTick)
                     {
-                        Thread.Sleep(LineInterval);
+                        if (!WaitingManager.WaitInitialized)
+                        {
+                            SetLineProgression(false);
+                            SetLineExecution(false);
+                            WaitingManager.StartWait();
+                        }
                     }
                 }
 
                 if (ScopedInThisTick)
                 {
                     ScopedInThisTick = false;
+                }
+
+                if (regressedOnThisTick)
+                {
+                    regressedOnThisTick = false;
                 }
             }
             ThreadEndedActionQueue.Enqueue(() =>
@@ -312,7 +353,7 @@ namespace StrPrsL
         #endregion
 
         #region Public Methods
-        public void ProgressCurrentScope()
+        public void ProgressCurrentScopeOnce()
         {
             CurrentScope.LineNumber++;
         }
@@ -378,7 +419,9 @@ namespace StrPrsL
             StopScope = null;
 
             //Compile
-            Scopes.Add(new Interpreter.Scope(MainScopeID, Interpreter.Compile(Interpreter.Interpret(this.scriptEditor.Text)), "Compilation"));
+            Interpreter.Intermediate[] intermediates = Interpreter.Interpret(this.scriptEditor.Text);
+            Interpreter.Execution[] executions = Interpreter.Compile(intermediates);
+            Scopes.Add(new Interpreter.Scope(MainScopeID, executions, "Compilation"));
             SwitchScope(MainScopeID);
 
             if (StartScope != null)
@@ -391,6 +434,7 @@ namespace StrPrsL
             if (scriptExecutionThread == null || scriptExecutionThread.ThreadState == ThreadState.Stopped)
             {
                 scriptExecutionThread = new Thread(ScriptExecutionTick);
+                scriptExecutionThread.IsBackground = true;
                 if (BlockThread.IsChecked.HasValue)
                 {
                     BlockThreadForUI = BlockThread.IsChecked.Value;
@@ -433,7 +477,8 @@ namespace StrPrsL
                         {
                             InterruptThread();
                             return null;
-                        })
+                        },
+                        null)
                     };
                 }
 
@@ -449,6 +494,11 @@ namespace StrPrsL
         public void SetLineProgression(bool enabled)
         {
             ProgressToNextLine = enabled;
+        }
+
+        public void SetLineExecution(bool enabled)
+        {
+            LineExecution = enabled;
         }
 
         public void FocusScript(int line, int lineoffset)

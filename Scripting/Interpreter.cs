@@ -1,9 +1,7 @@
-﻿using System;
+﻿using StrPrsL.Utility;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using StrPrsL.Utility;
 
 namespace StrPrsL.Scripting
 {
@@ -62,6 +60,23 @@ namespace StrPrsL.Scripting
             /// The sequence to determine the escape from the toggling of string capturing.
             /// </summary>
             public const string StringEscape = "\\";
+
+            /// <summary>
+            /// The command name for a special conditional command which has a block attached.
+            /// </summary>
+            public const string ConditionalBlockCommandName = "if";
+            /// <summary>
+            /// The command name for a special negative conditional command which has a block attached.
+            /// </summary>
+            public const string ConditionalNegativeBlockCommandName = "else";
+            /// <summary>
+            /// Lower case version of <see cref="ConditionalBlockCommandName"/>.
+            /// </summary>
+            public const string ConditionalBlockCommandName_Lower = "if";
+            /// <summary>
+            /// Lower case version of <see cref="ConditionalNegativeBlockCommandName"/>.
+            /// </summary>
+            public const string ConditionalNegativeBlockCommandName_Lower = "else";
         }
 
         /// <summary>
@@ -105,6 +120,14 @@ namespace StrPrsL.Scripting
             /// Unique identifier for this instruction.
             /// </summary>
             public int GUID;
+            /// <summary>
+            /// The <code>&lt;Else()&gt;</code> block for <code>&lt;If()&gt;</code> connected at compile-time. When an Else command is encountered, it is connected to the <see cref="Else"/> property of the last compiled If command.
+            /// </summary>
+            public Intermediate Else;
+            /// <summary>
+            /// Determines whether this instruction should be automatically added to the compiled script or if it should only be callable from elsewhere in the script.
+            /// </summary>
+            public bool Automatic;
 
             private string aggregationBuffer;
 
@@ -119,6 +142,8 @@ namespace StrPrsL.Scripting
                 Type = type;
                 Block = new List<Intermediate>();
                 Execution = null;
+                Else = null;
+                Automatic = true;
             }
 
             /// <summary>
@@ -133,6 +158,8 @@ namespace StrPrsL.Scripting
                 Type = type;
                 Block = new List<Intermediate>();
                 Execution = null;
+                Else = null;
+                Automatic = true;
             }
 
             /// <summary>
@@ -318,6 +345,15 @@ namespace StrPrsL.Scripting
                     return Executions[LineNumber];
                 }
             }
+
+            public override string ToString()
+            {
+                if (Executions != null && Executions.Length > 0)
+                {
+                    return string.Join(Environment.NewLine, Executions as IEnumerable<Execution>);
+                }
+                return base.ToString();
+            }
         }
 
         /// <summary>
@@ -355,6 +391,8 @@ namespace StrPrsL.Scripting
             int lineNumber;
             //Error checking and exception handling
             string captureSinceSuccess = "";
+            //Special interpretation
+            Intermediate previousIf = null;
 
             //Iterate through all characters in script
             for (int i = 0; i < script.Length; i++)
@@ -473,6 +511,23 @@ namespace StrPrsL.Scripting
                                     }
                                     currentIntermediate.Info(captureSinceSuccess, null, null);
                                     captureSinceSuccess = "";
+
+                                    if (currentIntermediate.InstructionName.ToLower() == Syntax.ConditionalBlockCommandName.ToLower())
+                                    {
+                                        previousIf = currentIntermediate;
+                                    }
+                                    else if (currentIntermediate.InstructionName.ToLower() == Syntax.ConditionalNegativeBlockCommandName.ToLower())
+                                    {
+                                        if (previousIf != null)
+                                        {
+                                            previousIf.Else = currentIntermediate;
+                                            previousIf = null;
+                                        }
+                                        else
+                                        {
+                                            Exceptions.Throw(new Exceptions.SyntaxException("No conditional command was provided before negative conditional command.", $"Expected \"{Syntax.ConditionalBlockCommandName}\" before \"{Syntax.ConditionalNegativeBlockCommandName}\".", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                        }
+                                    }
                                 }
                                 else
                                 {
@@ -543,9 +598,25 @@ namespace StrPrsL.Scripting
         {
             public Func<object> Instruction;
 
-            public Execution(Func<object> instruction)
+            public Intermediate Origin
+            {
+                get;
+                private set;
+            }
+
+            public Execution(Func<object> instruction, Intermediate origin)
             {
                 Instruction = instruction;
+                Origin = origin;
+            }
+
+            public override string ToString()
+            {
+                if (Origin == null)
+                {
+                    return base.ToString();
+                }
+                return Origin.ToString();
             }
         }
 
@@ -561,7 +632,11 @@ namespace StrPrsL.Scripting
             for (int i = 0; i < intermediates.Length; i++)
             {
                 Execution buffer = Compile(intermediates[i]);
-                if (buffer != null)
+                if (intermediates[i].Execution == null)
+                {
+                    intermediates[i].Execution = buffer;
+                }
+                if (buffer != null && intermediates[i].Automatic)
                 {
                     result.Add(buffer);
                 }
@@ -579,13 +654,18 @@ namespace StrPrsL.Scripting
         {
             Func<object> result = null;
 
-            Execution executionBuffer;
+            //Compile conditional
+            if (intermediate.Else != null)
+            {
+                intermediate.Else.Execution = Compile(intermediate.Else);
+            }
 
+            //Compile parameters
             for (int i = 0; i < intermediate.Parameters.Count; i++)
             {
                 if (intermediate.Parameters[i].Execution == null)
                 {
-                    executionBuffer = Compile(intermediate.Parameters[i]);
+                    Execution executionBuffer = Compile(intermediate.Parameters[i]);
                     if (executionBuffer != null)
                     {
                         intermediate.Parameters[i].Execution = executionBuffer;
@@ -593,18 +673,39 @@ namespace StrPrsL.Scripting
                 }
             }
 
+            //Clean up parameters
+            for (int i = intermediate.Parameters.Count - 1; i >= 0; i--)
+            {
+                if (intermediate.Parameters[i].Execution == null || !intermediate.Parameters[i].Automatic)
+                {
+                    intermediate.Parameters.RemoveAt(i);
+                }
+            }
+
+            //Compile block
             for (int i = 0; i < intermediate.Block.Count; i++)
             {
                 if (intermediate.Block[i].Execution == null)
                 {
-                    executionBuffer = Compile(intermediate.Block[i]);
+                    Execution executionBuffer = Compile(intermediate.Block[i]);
                     if (executionBuffer != null)
                     {
                         intermediate.Block[i].Execution = executionBuffer;
                     }
                 }
             }
-            
+
+            //Clean up block
+            for (int i = intermediate.Block.Count - 1; i >= 0; i--)
+            {
+                if (intermediate.Block[i].Execution == null || !intermediate.Block[i].Automatic)
+                {
+                    intermediate.Block.RemoveAt(i);
+                }
+            }
+
+            string contionalLower = "";
+
             if (intermediate.Type == Intermediate.InstructionType.String)
             {
                 result = () => { return intermediate.InstructionName; };
@@ -623,7 +724,7 @@ namespace StrPrsL.Scripting
                     case "print":
                         result = () =>
                         {
-                            Functions.Print(intermediate);
+                            Functions.Print(intermediate.AggregateParams(), intermediate);
                             return null;
                         };
                         break;
@@ -631,20 +732,20 @@ namespace StrPrsL.Scripting
                         result = () =>
                         {
                             MainWindow.Instance.SetLineProgression(false);
-                            if (!Functions.WaitInitialized)
+                            if (!Functions.WaitingManager.WaitInitialized)
                             {
-                                Functions.StartWait();
-                                MainWindow.Instance.PostInterruptionList.Add(Functions.StopWait);
+                                Functions.WaitingManager.StartWait();
+                                MainWindow.Instance.PostInterruptionList.Add(Functions.WaitingManager.StopWait);
                             }
-                            if (Functions.IsWaitComplete(intermediate.GetParam(0).Invoke().HandledCast<long>(intermediate) * TimeSpan.TicksPerMillisecond))
+                            if (Functions.WaitingManager.IsWaitComplete(intermediate.GetParam(0).Invoke().HandledCast<long>(intermediate) * TimeSpan.TicksPerMillisecond))
                             {
-                                Functions.StopWait();
+                                Functions.WaitingManager.StopWait();
                                 MainWindow.Instance.SetLineProgression(true);
                             }
                             return null;
                         };
                         break;
-                    case "if":
+                    case Syntax.ConditionalBlockCommandName_Lower:
                         int guid = intermediate.GetHashCode();
                         intermediate.GUID = guid;
                         MainWindow.Instance.AddScope(new Scope(guid, intermediate.Block.Select(i => i.Execution).ToArray(), intermediate.Raw));
@@ -652,17 +753,27 @@ namespace StrPrsL.Scripting
                         {
                             if (intermediate.GetParam(0).Invoke().HandledCast<bool>(intermediate) == true)
                             {
-                                MainWindow.Instance.ProgressCurrentScope();
+                                MainWindow.Instance.ProgressCurrentScopeOnce();
                                 MainWindow.Instance.SwitchScope(guid, true);
                                 MainWindow.Instance.ScopedInThisTick = true;
+                            }
+                            else if (intermediate.Else != null)
+                            {
+                                intermediate.Else.Execution.Instruction.Invoke();
                             }
                             return null;
                         };
                         break;
-                    case "else":
+                    case Syntax.ConditionalNegativeBlockCommandName_Lower:
+                        int elseGuid = intermediate.GetHashCode();
+                        intermediate.GUID = elseGuid;
+                        MainWindow.Instance.AddScope(new Scope(elseGuid, intermediate.Block.Select(i => i.Execution).ToArray(), intermediate.Raw));
+                        intermediate.Automatic = false;
                         result = () =>
                         {
-                            //Hook to the last "if" compiled? Store last "if" compiled in a variable then hook to it here
+                            MainWindow.Instance.ProgressCurrentScopeOnce();
+                            MainWindow.Instance.SwitchScope(elseGuid, true);
+                            MainWindow.Instance.ScopedInThisTick = true;
                             return null;
                         };
                         break;
@@ -682,10 +793,12 @@ namespace StrPrsL.Scripting
                         break;
                     case "start":
                         MainWindow.Instance.RegisterStartScope(new Scope(MainWindow.Instance.StartScopeID, intermediate.Block.Select(i => i.Execution).ToArray(), intermediate.Raw));
+                        intermediate.Automatic = false;
                         result = null;
                         break;
                     case "stop":
                         MainWindow.Instance.RegisterStopScope(new Scope(MainWindow.Instance.StopScopeID, intermediate.Block.Select(i => i.Execution).ToArray(), intermediate.Raw));
+                        intermediate.Automatic = false;
                         result = null;
                         break;
                     default:
@@ -736,7 +849,7 @@ namespace StrPrsL.Scripting
             {
                 return null;
             }
-            return new Execution(result);
+            return new Execution(result, intermediate);
         }
 
         /// <summary>

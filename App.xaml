@@ -9,6 +9,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Styles/AppTheme.xaml" />
                 <!--  Contains all of the colours and brushes for a theme  -->
+                <ResourceDictionary Source="Themes/ColourfulDarkTheme.xaml" />
                 <ResourceDictionary Source="Themes/ColourDictionaries/DeepDark.xaml" />
                 <!--  Contains most of the control-specific brushes which reference  -->
                 <!--  the above theme. I aim for this to contain ALL brushes, not most  -->

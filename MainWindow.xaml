@@ -14,7 +14,7 @@
     MinHeight="450"
     Loaded="Window_Loaded"
     Style="{StaticResource CustomWindowStyle}"
-    mc:Ignorable="d">
+    mc:Ignorable="d" Closing="Window_Closing">
     <Grid Background="#1a1a1a">
         <Grid.RowDefinitions>
             <RowDefinition />
