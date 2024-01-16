@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Media;
 
 namespace StrPrsL.Scripting
 {
@@ -128,6 +129,10 @@ namespace StrPrsL.Scripting
             /// Determines whether this instruction should be automatically added to the compiled script or if it should only be callable from elsewhere in the script.
             /// </summary>
             public bool Automatic;
+            /// <summary>
+            /// The If-stack for the <see cref="Block"/> that belongs to this <see cref="Intermediate"/>.
+            /// </summary>
+            public Stack<Intermediate> BlockIfStack = new Stack<Intermediate>();
 
             private string aggregationBuffer;
 
@@ -194,6 +199,17 @@ namespace StrPrsL.Scripting
             public Func<object> GetParam(int index)
             {
                 return Parameters[index].Execution.Instruction;
+            }
+
+            /// <summary>
+            /// Quick access to <see cref="Parameters"/> of this instruction by casting them via <see cref="Utility.Extensions.HandledCast{T}(object, Intermediate)"/>.
+            /// </summary>
+            /// <typeparam name="T">The <see cref="System.Type"/> that the result of the <see cref="Parameters"/>'s <see cref="Func{object}"/> result will be casted to.</typeparam>
+            /// <param name="index">The index of the parameter from <see cref="Parameters"/>.</param>
+            /// <returns><see cref="Parameters"/>'s <see cref="Func{object}"/> result casted to <typeparamref name="T"/>.</returns>
+            public T InvokeParamCast<T>(int index)
+            {
+                return GetParam(index).Invoke().HandledCast<T>(this);
             }
 
             public string AggregateParams()
@@ -350,7 +366,7 @@ namespace StrPrsL.Scripting
             {
                 if (Executions != null && Executions.Length > 0)
                 {
-                    return string.Join(Environment.NewLine, Executions as IEnumerable<Execution>);
+                    return $"({Identifier}){Environment.NewLine}{string.Join(Environment.NewLine, Executions as IEnumerable<Execution>)}";
                 }
                 return base.ToString();
             }
@@ -382,7 +398,8 @@ namespace StrPrsL.Scripting
 
             Stack<Intermediate> captureStack = new Stack<Intermediate>();
             Intermediate currentIntermediate = null;
-            Intermediate lastBlockCandidate = null;
+            Stack<Intermediate> blockStack = new Stack<Intermediate>();
+            Intermediate currentBlock = null;
 
             string currentCapture = "";
             char currentChar;
@@ -392,7 +409,8 @@ namespace StrPrsL.Scripting
             //Error checking and exception handling
             string captureSinceSuccess = "";
             //Special interpretation
-            Intermediate previousIf = null;
+            Stack<Intermediate> mainIfStack = new Stack<Intermediate>();
+            Intermediate currentIf;
 
             //Iterate through all characters in script
             for (int i = 0; i < script.Length; i++)
@@ -405,21 +423,21 @@ namespace StrPrsL.Scripting
                     continue;
                 }
 
-                lineNumber = GetLineNumber(script, i);
+                lineNumber = Helpers.GetLineNumber(script, i);
 
                 //Capture currently processed character
                 currentCapture += currentChar;
                 captureSinceSuccess += currentChar;
 
                 //Handle string operations
-                if (SequenceLast(currentCapture, Syntax.StringSwitch) && !escapeNextChar)
+                if (Helpers.SequenceLast(currentCapture, Syntax.StringSwitch) && !escapeNextChar)
                 {
-                    currentCapture = RemoveSequenceLast(currentCapture, Syntax.StringSwitch);
+                    currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.StringSwitch);
                     capturingString = !capturingString;
                 }
-                else if (SequenceLast(currentCapture, Syntax.StringEscape) && !escapeNextChar)
+                else if (Helpers.SequenceLast(currentCapture, Syntax.StringEscape) && !escapeNextChar)
                 {
-                    currentCapture = RemoveSequenceLast(currentCapture, Syntax.StringEscape);
+                    currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.StringEscape);
                     escapeNextChar = true;
                 }
                 else
@@ -430,25 +448,25 @@ namespace StrPrsL.Scripting
                         if (!capturingString)
                         {
                             //Parse based on previously captured character
-                            if (SequenceLast(currentCapture, Syntax.CommandBegin))
+                            if (Helpers.SequenceLast(currentCapture, Syntax.CommandBegin))
                             {
-                                if (lastBlockCandidate != null)
+                                if (blockStack.TryPeek(out currentBlock))
                                 {
-                                    lastBlockCandidate.Block.Add(new Intermediate(Intermediate.InstructionType.Command).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
-                                    captureStack.Push(lastBlockCandidate.Block[lastBlockCandidate.Block.Count - 1]);
+                                    currentBlock.Block.Add(new Intermediate(Intermediate.InstructionType.Command).Info(captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
+                                    captureStack.Push(currentBlock.Block[currentBlock.Block.Count - 1]);
                                 }
                                 else
                                 {
-                                    captureStack.Push(new Intermediate(Intermediate.InstructionType.Command).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                    captureStack.Push(new Intermediate(Intermediate.InstructionType.Command).Info(captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                 }
-                                currentCapture = RemoveSequenceLast(currentCapture, Syntax.CommandBegin);
+                                currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.CommandBegin);
                             }
-                            else if (SequenceLast(currentCapture, Syntax.ParameterFieldBegin))
+                            else if (Helpers.SequenceLast(currentCapture, Syntax.ParameterFieldBegin))
                             {
-                                currentCapture = RemoveSequenceLast(currentCapture, Syntax.ParameterFieldBegin);
+                                currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.ParameterFieldBegin);
                                 if (currentCapture == "")
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No name provided for instruction.", "Instruction name must be provided.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No name provided for instruction.", "Instruction name must be provided.", captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                     return null;
                                 }
                                 if (captureStack.TryPeek(out currentIntermediate))
@@ -457,126 +475,146 @@ namespace StrPrsL.Scripting
                                 }
                                 else
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No previous instruction found to attach this parameter field.", "Parameter fields must be attached to an instruction. E.g.: a command or a function", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No previous instruction found to attach this parameter field.", "Parameter fields must be attached to an instruction. E.g.: a command or a function", captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                     return null;
                                 }
                                 currentCapture = "";
                             }
-                            else if (SequenceLast(currentCapture, Syntax.ParameterSeperator))
+                            else if (Helpers.SequenceLast(currentCapture, Syntax.ParameterSeperator))
                             {
-                                currentCapture = RemoveSequenceLast(currentCapture, Syntax.ParameterSeperator);
+                                currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.ParameterSeperator);
 
                                 //Skip parameter addition if the provided parameter is null. Solution to edge-case where a function is already parsed for the paramter slot before the seperator
                                 if (currentCapture != "")
                                 {
                                     if (captureStack.TryPeek(out currentIntermediate))
                                     {
-                                        currentIntermediate.Parameters.Add(new Intermediate(currentCapture, Intermediate.InstructionType.String).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                        currentIntermediate.Parameters.Add(new Intermediate(currentCapture, Intermediate.InstructionType.String).Info(captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                     }
                                     else
                                     {
-                                        Exceptions.Throw(new Exceptions.SyntaxException("No previous parameter field found to attach this parameter.", "Parameters must be attached to parameter field.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                        Exceptions.Throw(new Exceptions.SyntaxException("No previous parameter field found to attach this parameter.", "Parameters must be attached to parameter field.", captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                         return null;
                                     }
                                 }
                                 currentCapture = "";
                             }
-                            else if (SequenceLast(currentCapture, Syntax.ParameterFieldEnd))
+                            else if (Helpers.SequenceLast(currentCapture, Syntax.ParameterFieldEnd))
                             {
-                                currentCapture = RemoveSequenceLast(currentCapture, Syntax.ParameterFieldEnd);
+                                currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.ParameterFieldEnd);
 
                                 //Skip parameter addition if the provided parameter is null. Solution to edge-case where a function is already parsed for the paramter slot before the seperator
                                 if (currentCapture != "")
                                 {
                                     if (captureStack.TryPeek(out currentIntermediate))
                                     {
-                                        currentIntermediate.Parameters.Add(new Intermediate(currentCapture, Intermediate.InstructionType.String).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                        currentIntermediate.Parameters.Add(new Intermediate(currentCapture, Intermediate.InstructionType.String).Info(captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                     }
                                     else
                                     {
-                                        Exceptions.Throw(new Exceptions.SyntaxException("No previous parameter field to close.", "A parameter field must begin before a parameter field ending.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                        Exceptions.Throw(new Exceptions.SyntaxException("No previous parameter field to close.", "A parameter field must begin before a parameter field ending.", captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                         return null;
                                     }
                                 }
                                 currentCapture = "";
                             }
-                            else if (SequenceLast(currentCapture, Syntax.CommandEnd))
+                            else if (Helpers.SequenceLast(currentCapture, Syntax.CommandEnd))
                             {
-                                currentCapture = RemoveSequenceLast(currentCapture, Syntax.CommandEnd);
+                                currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.CommandEnd);
                                 if (captureStack.TryPop(out currentIntermediate))
                                 {
-                                    if (lastBlockCandidate == null)
-                                    {
-                                        result.Add(currentIntermediate);
-                                    }
                                     currentIntermediate.Info(captureSinceSuccess, null, null);
                                     captureSinceSuccess = "";
 
-                                    if (currentIntermediate.InstructionName.ToLower() == Syntax.ConditionalBlockCommandName.ToLower())
+                                    if (currentIntermediate.InstructionName.ToLower() == Syntax.ConditionalNegativeBlockCommandName.ToLower())
                                     {
-                                        previousIf = currentIntermediate;
-                                    }
-                                    else if (currentIntermediate.InstructionName.ToLower() == Syntax.ConditionalNegativeBlockCommandName.ToLower())
-                                    {
-                                        if (previousIf != null)
+                                        currentIf = null;
+                                        if (blockStack.TryPeek(out currentBlock))
                                         {
-                                            previousIf.Else = currentIntermediate;
-                                            previousIf = null;
+                                            currentBlock.BlockIfStack.TryPop(out currentIf);
                                         }
                                         else
                                         {
-                                            Exceptions.Throw(new Exceptions.SyntaxException("No conditional command was provided before negative conditional command.", $"Expected \"{Syntax.ConditionalBlockCommandName}\" before \"{Syntax.ConditionalNegativeBlockCommandName}\".", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                            mainIfStack.TryPop(out currentIf);
+                                        }
+
+                                        if (currentIf != null)
+                                        {
+                                            currentIf.Else = currentIntermediate;
+                                        }
+                                        else
+                                        {
+                                            Exceptions.Throw(new Exceptions.SyntaxException("No conditional command was provided before negative conditional command.", $"Expected \"{Syntax.ConditionalBlockCommandName}\" before \"{Syntax.ConditionalNegativeBlockCommandName}\".", captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (currentIntermediate.InstructionName.ToLower() == Syntax.ConditionalBlockCommandName.ToLower())
+                                        {
+                                            if (blockStack.TryPeek(out currentBlock))
+                                            {
+                                                currentBlock.BlockIfStack.Push(currentIntermediate);
+                                            }
+                                            else
+                                            {
+                                                mainIfStack.Push(currentIntermediate);
+                                            }
+                                        }
+
+                                        if (!blockStack.TryPeek(out currentBlock))
+                                        {
+                                            result.Add(currentIntermediate);
                                         }
                                     }
                                 }
                                 else
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No command was provided before ending command.", "Expected \"<\" before \">\".", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No command was provided before ending command.", "Expected \"<\" before \">\".", captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                     return null;
                                 }
                                 currentCapture = "";
                             }
-                            else if (SequenceLast(currentCapture, Syntax.FunctionBegin))
+                            else if (Helpers.SequenceLast(currentCapture, Syntax.FunctionBegin))
                             {
-                                currentCapture = RemoveSequenceLast(currentCapture, Syntax.FunctionBegin);
+                                currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.FunctionBegin);
                                 if (captureStack.TryPeek(out currentIntermediate))
                                 {
-                                    captureStack.Push(new Intermediate(Intermediate.InstructionType.Function).Info(captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                    captureStack.Push(new Intermediate(Intermediate.InstructionType.Function).Info(captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                     currentIntermediate.Parameters.Add(captureStack.Peek());
                                 }
                                 else
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No instruction was provided for function to be assigned to.", "Functions must be attached to the parameter field of another instruction.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No instruction was provided for function to be assigned to.", "Functions must be attached to the parameter field of another instruction.", captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                     return null;
                                 }
                                 currentCapture = "";
                             }
-                            else if (SequenceLast(currentCapture, Syntax.FunctionEnd))
+                            else if (Helpers.SequenceLast(currentCapture, Syntax.FunctionEnd))
                             {
-                                currentCapture = RemoveSequenceLast(currentCapture, Syntax.FunctionEnd);
+                                currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.FunctionEnd);
                                 if (!captureStack.TryPop(out currentIntermediate))
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No function was provided before ending function.", "Expected \"[\" before \"]\".", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No function was provided before ending function.", "Expected \"[\" before \"]\".", captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                     return null;
                                 }
                                 currentIntermediate.Info(captureSinceSuccess, null, null);
                                 currentCapture = "";
                             }
-                            else if (SequenceLast(currentCapture, Syntax.BlockBegin))
+                            else if (Helpers.SequenceLast(currentCapture, Syntax.BlockBegin))
                             {
-                                currentCapture = RemoveSequenceLast(currentCapture, Syntax.BlockBegin);
+                                currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.BlockBegin);
                                 if (currentIntermediate == null)
                                 {
-                                    Exceptions.Throw(new Exceptions.SyntaxException("No command was provided to attach this block.", "Expected a command before the block was declared.", captureSinceSuccess, lineNumber, GetLineOffset(script, i)));
+                                    Exceptions.Throw(new Exceptions.SyntaxException("No command was provided to attach this block.", "Expected a command before the block was declared.", captureSinceSuccess, lineNumber, Helpers.GetLineOffset(script, i)));
                                     return null;
                                 }
-                                lastBlockCandidate = currentIntermediate;
+                                blockStack.Push(currentIntermediate);
                                 currentCapture = "";
                             }
-                            else if (SequenceLast(currentCapture, Syntax.BlockEnd))
+                            else if (Helpers.SequenceLast(currentCapture, Syntax.BlockEnd))
                             {
-                                currentCapture = RemoveSequenceLast(currentCapture, Syntax.BlockEnd);
-                                lastBlockCandidate = null;
+                                currentCapture = Helpers.RemoveSequenceLast(currentCapture, Syntax.BlockEnd);
+                                blockStack.Pop();
                                 currentCapture = "";
                             }
                         }
@@ -654,6 +692,7 @@ namespace StrPrsL.Scripting
         {
             Func<object> result = null;
 
+            #region Pre-Compilation
             //Compile conditional
             if (intermediate.Else != null)
             {
@@ -703,8 +742,7 @@ namespace StrPrsL.Scripting
                     intermediate.Block.RemoveAt(i);
                 }
             }
-
-            string contionalLower = "";
+            #endregion
 
             if (intermediate.Type == Intermediate.InstructionType.String)
             {
@@ -717,7 +755,91 @@ namespace StrPrsL.Scripting
                     case "setmouse":
                         result = () =>
                         {
-                            Functions.SetMouse(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate), intermediate.GetParam(1).Invoke().HandledCast<int>(intermediate));
+                            Functions.SetMouse(intermediate.InvokeParamCast<int>(0), intermediate.InvokeParamCast<int>(1));
+                            return null;
+                        };
+                        break;
+                    case "leftclick":
+                        result = () =>
+                        {
+                            Functions.LeftClick();
+                            return null;
+                        };
+                        break;
+                    case "rightclick":
+                        result = () =>
+                        {
+                            Functions.RightClick();
+                            return null;
+                        };
+                        break;
+                    case "middleclick":
+                        result = () =>
+                        {
+                            Functions.MiddleClick();
+                            return null;
+                        };
+                        break;
+                    case "leftdown":
+                        result = () =>
+                        {
+                            Functions.LeftDown();
+                            return null;
+                        };
+                        break;
+                    case "leftup":
+                        result = () =>
+                        {
+                            Functions.LeftUp();
+                            return null;
+                        };
+                        break;
+                    case "rightdown":
+                        result = () =>
+                        {
+                            Functions.RightDown();
+                            return null;
+                        };
+                        break;
+                    case "rightup":
+                        result = () =>
+                        {
+                            Functions.RightUp();
+                            return null;
+                        };
+                        break;
+                    case "middledown":
+                        result = () =>
+                        {
+                            Functions.MiddleDown();
+                            return null;
+                        };
+                        break;
+                    case "middleup":
+                        result = () =>
+                        {
+                            Functions.MiddleUp();
+                            return null;
+                        };
+                        break;
+                    case "scrollup":
+                        result = () =>
+                        {
+                            Functions.ScrollUp();
+                            return null;
+                        };
+                        break;
+                    case "scrolldown":
+                        result = () =>
+                        {
+                            Functions.ScrollDown();
+                            return null;
+                        };
+                        break;
+                    case "movemouse":
+                        result = () =>
+                        {
+                            Functions.MoveMouse(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate), intermediate.GetParam(1).Invoke().HandledCast<int>(intermediate));
                             return null;
                         };
                         break;
@@ -745,6 +867,13 @@ namespace StrPrsL.Scripting
                             return null;
                         };
                         break;
+                    case "sleep":
+                        result = () =>
+                        {
+                            Functions.Sleep(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate));
+                            return null;
+                        };
+                        break;
                     case Syntax.ConditionalBlockCommandName_Lower:
                         int guid = intermediate.GetHashCode();
                         intermediate.GUID = guid;
@@ -755,7 +884,7 @@ namespace StrPrsL.Scripting
                             {
                                 MainWindow.Instance.ProgressCurrentScopeOnce();
                                 MainWindow.Instance.SwitchScope(guid, true);
-                                MainWindow.Instance.ScopedInThisTick = true;
+                                MainWindow.Instance.ScopedInOnThisTick = true;
                             }
                             else if (intermediate.Else != null)
                             {
@@ -773,7 +902,7 @@ namespace StrPrsL.Scripting
                         {
                             MainWindow.Instance.ProgressCurrentScopeOnce();
                             MainWindow.Instance.SwitchScope(elseGuid, true);
-                            MainWindow.Instance.ScopedInThisTick = true;
+                            MainWindow.Instance.ScopedInOnThisTick = true;
                             return null;
                         };
                         break;
@@ -801,6 +930,118 @@ namespace StrPrsL.Scripting
                         intermediate.Automatic = false;
                         result = null;
                         break;
+                    case "clearmessages":
+                        result = () =>
+                        {
+                            MainWindow.Instance.ClearMessageQueue();
+                            return null;
+                        };
+                        break;
+                    case "clearoutput":
+                        result = () =>
+                        {
+                            MainWindow.Instance.CrossThreadOperationBlockedCollection.Add(() => MainWindow.Instance.ClearOutput());
+                            return null;
+                        };
+                        break;
+                    case "setinterval":
+                        result = () =>
+                        {
+                            MainWindow.Instance.CrossThreadOperationBlockedCollection.Add(() => MainWindow.Instance.UpdateLineInterval(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate)));
+                            return null;
+                        };
+                        break;
+                    case "uiblock":
+                        result = () =>
+                        {
+                            MainWindow.Instance.CrossThreadOperationBlockedCollection.Add(() => MainWindow.Instance.UpdateUIThreadBlock(intermediate.GetParam(0).Invoke().HandledCast<bool>(intermediate)));
+                            return null;
+                        };
+                        break;
+                    case "aborthotkey":
+                        result = () =>
+                        {
+                            MainWindow.Instance.CrossThreadOperationBlockedCollection.Add(() => MainWindow.Instance.UpdateAbortLoopKey(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate)));
+                            return null;
+                        };
+                        break;
+                    case "setloop":
+                        result = () =>
+                        {
+                            MainWindow.Instance.CrossThreadOperationBlockedCollection.Add(() => MainWindow.Instance.UpdateLoopState(intermediate.GetParam(0).Invoke().HandledCast<bool>(intermediate)));
+                            return null;
+                        };
+                        break;
+                    case "getscreen":
+                        result = () =>
+                        {
+                            Functions.GetDCCommand();
+                            return null;
+                        };
+                        break;
+                    case "releasescreen":
+                        result = () =>
+                        {
+                            Functions.ReleaseDCCommand();
+                            return null;
+                        };
+                        break;
+                    case "sendstrokes":
+                        result = () =>
+                        {
+                            Functions.SendKeysCommand(intermediate.GetParam(0).Invoke().ToString());
+                            return null;
+                        };
+                        break;
+                    case "keydown":
+                        result = () =>
+                        {
+                            Functions.KeyDown(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate));
+                            return null;
+                        };
+                        break;
+                    case "keyup":
+                        result = () =>
+                        {
+                            Functions.KeyUp(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate));
+                            return null;
+                        };
+                        break;
+                    case "keypress":
+                        result = () =>
+                        {
+                            Functions.KeyPress(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate));
+                            return null;
+                        };
+                        break;
+                    case "windowstate":
+                        result = () =>
+                        {
+                            Functions.ChangeWindowState(intermediate.InvokeParamCast<IntPtr>(0), intermediate.InvokeParamCast<int>(1));
+                            return null;
+                        };
+                        break;
+                    case "playaudio":
+                        result = () =>
+                        {
+                            Functions.PlayAudio(intermediate.GetParam(0).Invoke().ToString());
+                            return null;
+                        };
+                        break;
+                    case "stopexecution":
+                        result = () =>
+                        {
+                            MainWindow.Instance.StopScriptExecution(true);
+                            return null;
+                        };
+                        break;
+                    case "setstatus":
+                        result = () =>
+                        {
+                            MainWindow.Instance.CrossThreadOperationBlockedCollection.Add(() => MainWindow.Instance.UpdateStatusEnabled(intermediate.InvokeParamCast<bool>(0)));
+                            return null;
+                        };
+                        break;
                     default:
                         Exceptions.Throw(new Exceptions.ParsingException($"No command found by name \"{intermediate.InstructionName}\".", $"Command \"{intermediate.InstructionName}\" does not exist.", intermediate.Raw, intermediate.Line, intermediate.LineOffset));
                         break;
@@ -813,7 +1054,7 @@ namespace StrPrsL.Scripting
                     case "hotkey":
                         result = () =>
                         {
-                            return Functions.TestKey(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate).HandledCast<System.Windows.Input.Key>(intermediate));
+                            return Functions.GetKey(intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate).HandledCast<System.Windows.Input.Key>(intermediate));
                         };
                         break;
                     case "math":
@@ -834,10 +1075,136 @@ namespace StrPrsL.Scripting
                             return Functions.IsEqual(intermediate.GetParam(0).Invoke(), intermediate.GetParam(1).Invoke());
                         };
                         break;
-                    case "long":
+                    case "clamp":
+                        result = () =>
+                        {
+                            return Functions.ClampDecimal(intermediate.InvokeParamCast<decimal>(0), intermediate.InvokeParamCast<decimal>(1), intermediate.InvokeParamCast<decimal>(2));
+                        };
+                        break;
+                    case "chr":
+                        result = () =>
+                        {
+                            return Functions.GetChar(intermediate.InvokeParamCast<int>(0));
+                        };
+                        break;
+                    case "tostring":
+                        result = () =>
+                        {
+                            return intermediate.GetParam(0).Invoke().ToString();
+                        };
+                        break;
+                    case "tobool":
+                        result = () =>
+                        {
+                            return intermediate.InvokeParamCast<bool>(0);
+                        };
+                        break;
+                    case "toint":
+                        result = () =>
+                        {
+                            return intermediate.InvokeParamCast<int>(0);
+                        };
+                        break;
+                    case "todec":
+                        result = () =>
+                        {
+                            return intermediate.InvokeParamCast<decimal>(0);
+                        };
+                        break;
+                    case "tolong":
                         result = () =>
                         {
                             return intermediate.GetParam(0).Invoke().HandledCast<long>(intermediate);
+                        };
+                        break;
+                    case "color":
+                        result = () =>
+                        {
+                            return Color.FromRgb(intermediate.InvokeParamCast<byte>(0), intermediate.InvokeParamCast<byte>(1), intermediate.InvokeParamCast<byte>(2));
+                        };
+                        break;
+                    case "pixel":
+                        result = () =>
+                        {
+                            return Functions.GetPixelColor(intermediate.InvokeParamCast<int>(0), intermediate.InvokeParamCast<int>(1));
+                        };
+                        break;
+                    case "cursor":
+                        result = () =>
+                        {
+                            return Functions.GetMousePosition(intermediate.InvokeParamCast<char>(0));
+                        };
+                        break;
+                    case "conc":
+                        result = () =>
+                        {
+                            return intermediate.AggregateParams();
+                        };
+                        break;
+                    case "time":
+                        result = () =>
+                        {
+                            return Functions.CurrentTimeTicks();
+                        };
+                        break;
+                    case "audiopeak":
+                        result = () =>
+                        {
+                            return Functions.AudioPeak();
+                        };
+                        break;
+                    case "screensize":
+                        result = () =>
+                        {
+                            return Functions.GetScreenSize(intermediate.InvokeParamCast<char>(0));
+                        };
+                        break;
+                    case "getmousebutton":
+                        result = () =>
+                        {
+                            return Functions.GetMouseButton(intermediate.InvokeParamCast<int>(0));
+                        };
+                        break;
+                    case "and":
+                        result = () =>
+                        {
+                            return intermediate.InvokeParamCast<bool>(0) && intermediate.InvokeParamCast<bool>(1);
+                        };
+                        break;
+                    case "or":
+                        result = () =>
+                        {
+                            return intermediate.InvokeParamCast<bool>(0) || intermediate.InvokeParamCast<bool>(1);
+                        };
+                        break;
+                    case "activewindow":
+                        result = () =>
+                        {
+                            return Functions.GetCurrentWindow();
+                        };
+                        break;
+                    case "apppath":
+                        result = () =>
+                        {
+                            return Functions.GetExecutablePath();
+                        };
+                        break;
+                    case "desktop":
+                        result = () =>
+                        {
+                            return Functions.GetDesktopPath();
+                        };
+                        break;
+                    case "script":
+                        result = () =>
+                        {
+                            return Functions.GetScriptPath();
+                        };
+                        break;
+                    case "deltatime":
+                        result = () =>
+                        {
+                            return Functions.GetTickDelta();
                         };
                         break;
                     default:
@@ -853,69 +1220,75 @@ namespace StrPrsL.Scripting
         }
 
         /// <summary>
-        /// Get the line number of the character at <paramref name="index"/> in <paramref name="input"/>.
+        /// Provides access to helper methods.
         /// </summary>
-        /// <param name="input">The input string.</param>
-        /// <param name="index">The character's index.</param>
-        /// <returns>The line number of character at <paramref name="index"/> in <paramref name="input"/>.</returns>
-        private static int GetLineNumber(string input, int index)
+        public static class Helpers
         {
-            return input.Substring(0, index).Count(c => c == '\n' || c == '\r') + 1;
-        }
-
-        /// <summary>
-        /// Get the amount of characters that offset the character at <paramref name="index"/> in its line.
-        /// </summary>
-        /// <param name="input">The input string.</param>
-        /// <param name="index">The character's index.</param>
-        /// <returns>The amount of characters that offset the character at <paramref name="index"/> in <paramref name="input"/>.</returns>
-        private static int GetLineOffset(string input, int index)
-        {
-            input = input.Substring(0, index);
-            int nlIndex = input.LastIndexOf("\n");
-            int crIndex = input.LastIndexOf("\r");
-            if (nlIndex >= 0 && crIndex >= 0)
+            /// <summary>
+            /// Get the line number of the character at <paramref name="index"/> in <paramref name="input"/>.
+            /// </summary>
+            /// <param name="input">The input string.</param>
+            /// <param name="index">The character's index.</param>
+            /// <returns>The line number of character at <paramref name="index"/> in <paramref name="input"/>.</returns>
+            public static int GetLineNumber(string input, int index)
             {
-                if (nlIndex > crIndex)
+                return input.Substring(0, index).Count(c => c == '\n' || c == '\r') + 1;
+            }
+
+            /// <summary>
+            /// Get the amount of characters that offset the character at <paramref name="index"/> in its line.
+            /// </summary>
+            /// <param name="input">The input string.</param>
+            /// <param name="index">The character's index.</param>
+            /// <returns>The amount of characters that offset the character at <paramref name="index"/> in <paramref name="input"/>.</returns>
+            public static int GetLineOffset(string input, int index)
+            {
+                input = input.Substring(0, index);
+                int nlIndex = input.LastIndexOf("\n");
+                int crIndex = input.LastIndexOf("\r");
+                if (nlIndex >= 0 && crIndex >= 0)
                 {
-                    return index - nlIndex;
+                    if (nlIndex > crIndex)
+                    {
+                        return index - nlIndex;
+                    }
+                    else
+                    {
+                        return index - crIndex;
+                    }
                 }
-                else
+                return index;
+            }
+
+            /// <summary>
+            /// Check if the <paramref name="sequence"/> exists in the end of the <paramref name="input"/>.
+            /// </summary>
+            /// <param name="input">The input string.</param>
+            /// <param name="sequence">The sequence to be searched.</param>
+            /// <returns>Returns <see langword="true"/> if the <paramref name="sequence"/> exists in the end of the <paramref name="input"/>, <see langword="false"/> otherwise.</returns>
+            public static bool SequenceLast(string input, string sequence)
+            {
+                if (input.Length < sequence.Length)
                 {
-                    return index - crIndex;
+                    return false;
                 }
+                return (input.Substring(input.Length - sequence.Length) == sequence);
             }
-            return index;
-        }
 
-        /// <summary>
-        /// Check if the <paramref name="sequence"/> exists in the end of the <paramref name="input"/>.
-        /// </summary>
-        /// <param name="input">The input string.</param>
-        /// <param name="sequence">The sequence to be searched.</param>
-        /// <returns>Returns <see langword="true"/> if the <paramref name="sequence"/> exists in the end of the <paramref name="input"/>, <see langword="false"/> otherwise.</returns>
-        private static bool SequenceLast(string input, string sequence)
-        {
-            if (input.Length < sequence.Length)
+            /// <summary>
+            /// Remove the <paramref name="sequence"/> from the <paramref name="input"/>. Assumes the <paramref name="sequence"/> already exists in the ending of the <paramref name="input"/>.
+            /// </summary>
+            /// <param name="input">The input string.</param>
+            /// <param name="sequence">The sequence to be removed from <paramref name="input"/>.</param>
+            /// <returns>The remainder of <paramref name="input"/> with the <paramref name="sequence"/> removed from the end.</returns>
+            public static string RemoveSequenceLast(string input, string sequence)
             {
-                return false;
+                if (input.Length < sequence.Length)
+                {
+                    return input;
+                }
+                return input.Remove(input.Length - sequence.Length);
             }
-            return (input.Substring(input.Length - sequence.Length) == sequence);
-        }
-
-        /// <summary>
-        /// Remove the <paramref name="sequence"/> from the <paramref name="input"/>. Assumes the <paramref name="sequence"/> already exists in the ending of the <paramref name="input"/>.
-        /// </summary>
-        /// <param name="input">The input string.</param>
-        /// <param name="sequence">The sequence to be removed from <paramref name="input"/>.</param>
-        /// <returns>The remainder of <paramref name="input"/> with the <paramref name="sequence"/> removed from the end.</returns>
-        private static string RemoveSequenceLast(string input, string sequence)
-        {
-            if (input.Length < sequence.Length)
-            {
-                return input;
-            }
-            return input.Remove(input.Length - sequence.Length);
         }
     }
 }

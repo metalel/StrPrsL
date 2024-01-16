@@ -17,8 +17,15 @@ namespace StrPrsL.Scripting
         /// <param name="exception">The exception data.</param>
         public static void Throw(ScriptException exception)
         {
-            MainWindow.Instance.StopScriptExecution();
-            MainWindow.Instance.NotifyException(exception);
+            if (MainWindow.Instance.ScriptThreadAlive)
+            {
+                MainWindow.Instance.StopScriptExecution();
+            }
+            else
+            {
+                MainWindow.Instance.AbortStart = true;
+            }
+            MainWindow.Instance.CrossThreadOperationBlockedCollection.Add(() => MainWindow.Instance.NotifyException(exception));
         }
 
         /// <summary>
@@ -63,20 +70,25 @@ namespace StrPrsL.Scripting
                 return "General";
             }
 
+            public virtual string GetErrorType()
+            {
+                return $"{Type()} exception!";
+            }
+
             public override string ToString()
             {
-                result = $"{Type()} exception!";
-                result += $"{Environment.NewLine}\t{Message}";
-                result += $"{Environment.NewLine}\t\t{Information}";
+                result = $"|{GetErrorType()}";
+                result += $"{Environment.NewLine}|-{Message}";
+                result += $"{Environment.NewLine}|--{Information}";
                 if (Line.HasValue)
                 {
-                    result += $"{Environment.NewLine}\t\t\tAt line {Line.Value}";
+                    result += $"{Environment.NewLine}|---At line {Line.Value}";
                     if (LineOffset.HasValue)
                     {
                         result += $" starting at character #{LineOffset}";
                     }
                 }
-                result += $".{Environment.NewLine}{Environment.NewLine}{Raw}.";
+                result += $".{Environment.NewLine}{Environment.NewLine}Raw: {Raw}.";
                 return result;
             }
         }

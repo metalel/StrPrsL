@@ -12,25 +12,38 @@
     Height="450"
     MinWidth="800"
     MinHeight="450"
+    Closing="Window_Closing"
     Icon="/30x30SquareLogov2Cropped.png"
     Loaded="Window_Loaded"
     Style="{StaticResource CustomWindowStyle}"
-    mc:Ignorable="d" Closing="Window_Closing">
+    mc:Ignorable="d">
+    <Window.Resources>
+        <ContextMenu
+            x:Key="scriptEdtiorContextMenu"
+            Name="scriptEdtiorContextMenuObject"
+            Opened="scriptEdtiorContextMenu_Opened">
+            <MenuItem Click="scriptEdtiorContextMenuCut_Click" Header="Cut" />
+            <MenuItem Click="scriptEdtiorContextMenuCopy_Click" Header="Copy" />
+            <MenuItem Click="scriptEdtiorContextMenuPaste_Click" Header="Paste" />
+        </ContextMenu>
+    </Window.Resources>
     <Grid Background="#1a1a1a">
         <Grid.RowDefinitions>
             <RowDefinition />
             <RowDefinition Height="25" />
-            <RowDefinition Height="135" />
+            <RowDefinition Height="120" />
         </Grid.RowDefinitions>
         <avalonEdit:TextEditor
             Name="scriptEditor"
             Grid.Row="0"
             Margin="0,0,0,4"
             Background="#FF1A1A1A"
+            Drop="scriptEditor_Drop"
             FontFamily="Consolas"
             FontSize="16"
             HorizontalScrollBarVisibility="Auto"
             LineNumbersForeground="#8a8a87"
+            PreviewKeyDown="scriptEditor_PreviewKeyDown"
             ScrollViewer.HorizontalScrollBarVisibility="Auto"
             ScrollViewer.VerticalScrollBarVisibility="Auto"
             ShowLineNumbers="True"
@@ -63,11 +76,6 @@
             </CheckBox>
             <Separator Width="10" Margin="5" />
             <Button
-                x:Name="GuideButton"
-                Width="50"
-                Content="Guide" />
-            <Separator Width="4" Opacity="0" />
-            <Button
                 x:Name="LoadButton"
                 Width="50"
                 Click="LoadButton_Click"
@@ -76,12 +84,8 @@
             <Button
                 x:Name="SaveButton"
                 Width="50"
+                Click="SaveButton_Click"
                 Content="Save" />
-            <Separator Width="10" Margin="5" />
-            <Rectangle
-                x:Name="StatusIndicator"
-                Width="25"
-                Fill="Green" />
             <Separator Width="10" Margin="5" />
             <Label
                 HorizontalContentAlignment="Center"
@@ -109,7 +113,8 @@
                 Grid.Row="0"
                 Margin="0,0,4,0"
                 FontFamily="Consolas"
-                FontSize="20"
+                FontSize="12"
+                MouseDoubleClick="scriptOutput_MouseDoubleClick"
                 SelectionMode="Single" />
             <StackPanel
                 Grid.Column="1"
@@ -122,9 +127,10 @@
                     Content="Clear Output" />
                 <Separator Width="4" Opacity="0" />
                 <Button
-                    x:Name="TogglePauseButton"
+                    x:Name="ThemeColorButton"
                     Height="25"
-                    Content="Pause/Resume" />
+                    Click="ThemeColorButton_Click"
+                    Content="Theme Color" />
                 <Separator Width="4" Opacity="0" />
                 <Grid Height="20">
                     <Grid.ColumnDefinitions>
@@ -145,22 +151,11 @@
                         Value="0" />
                 </Grid>
                 <Separator Width="4" Opacity="0" />
-                <Button x:Name="ThemeColorButton" Content="Theme Color" />
-                <Separator Width="4" Opacity="0" />
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="0.3*" />
-                        <ColumnDefinition Width="0.7*" />
-                    </Grid.ColumnDefinitions>
-                    <ProgressBar x:Name="QueuedMessagesProgressBar" Grid.Column="0" />
-                    <Label
-                        x:Name="QueuedMessagesLabel"
-                        Grid.Column="1"
-                        Margin="0,-4,0,0"
-                        VerticalContentAlignment="Center"
-                        Content="Queued messages"
-                        FontSize="10" />
-                </Grid>
+                <Button
+                    x:Name="CopyOutput"
+                    Height="25"
+                    Click="CopyOutput_Click"
+                    Content="Copy Output" />
             </StackPanel>
             <Grid Grid.Column="2" Margin="4,0,0,0">
                 <Grid.RowDefinitions>
@@ -168,9 +163,10 @@
                     <RowDefinition Height="0.8*" />
                 </Grid.RowDefinitions>
                 <CheckBox
+                    Name="Status"
                     Grid.Row="0"
                     Content="Status"
-                    IsChecked="True" />
+                    IsChecked="False" />
                 <TextBlock
                     Name="StatusDisplay"
                     Grid.Row="1"

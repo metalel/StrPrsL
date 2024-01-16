@@ -13,5 +13,15 @@ namespace StrPrsL
     /// </summary>
     public partial class App : Application
     {
+        public static string OpenedWithFile = "";
+
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            if (e.Args != null && e.Args.Length > 0 && !string.IsNullOrEmpty(e.Args[0]))
+            {
+                OpenedWithFile = e.Args[0];
+            }
+            base.OnStartup(e);
+        }
     }
 }

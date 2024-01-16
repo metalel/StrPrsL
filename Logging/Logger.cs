@@ -13,8 +13,6 @@ namespace StrPrsL
     {
         private MainWindow owner;
 
-        private List<LogOnClickItem> onClickActions;
-        private int indexTracker;
         private bool autoScroll;
         private ScrollViewer outputScrollViewer;
         private ScrollBar outputScrollBar;
@@ -24,8 +22,6 @@ namespace StrPrsL
         public Logger(MainWindow owner)
         {
             this.owner = owner;
-            onClickActions = new List<LogOnClickItem>();
-            indexTracker = 0;
             outputScrollViewer = GetScrollViewer(owner.scriptOutput);
             outputScrollBar = GetScrollBar(outputScrollViewer);
         }
@@ -34,12 +30,7 @@ namespace StrPrsL
         {
             autoScroll = outputScrollBar.Value >= outputScrollBar.Maximum * 0.95;
 
-            if (onClick != null)
-            {
-                onClickActions.Add(new LogOnClickItem(onClick, indexTracker));
-            }
-            owner.scriptOutput.Items.Add(message);
-            indexTracker++;
+            owner.scriptOutput.Items.Add(new TestItemClass(message, onClick));
 
             if (autoScroll)
             {
@@ -69,9 +60,7 @@ namespace StrPrsL
 
         public void Clear()
         {
-            onClickActions.Clear();
             owner.scriptOutput.Items.Clear();
-            indexTracker = 0;
         }
 
         private ScrollViewer GetScrollViewer(Control control)
@@ -84,20 +73,20 @@ namespace StrPrsL
             return Helpers.GetDescendantByType(control, typeof(ScrollBar)) as ScrollBar;
         }
 
-        public Action GetOnClick(int index)
+        public class TestItemClass
         {
-            return onClickActions.First(i => i.Index == index).Action;
-        }
+            public string Message;
+            public Action OnClick;
 
-        private class LogOnClickItem
-        {
-            public Action Action;
-            public int Index;
-
-            public LogOnClickItem(Action action, int index)
+            public TestItemClass(string message, Action onClick)
             {
-                Action = action;
-                Index = index;
+                Message = message;
+                OnClick = onClick;
+            }
+
+            public override string ToString()
+            {
+                return Message;
             }
         }
     }
