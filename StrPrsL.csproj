@@ -7,6 +7,8 @@
     <UseWPF>true</UseWPF>
     <SignAssembly>True</SignAssembly>
     <ApplicationIcon>StrPrsL_Logo.ico</ApplicationIcon>
+    <BaseOutputPath>E:\OldDesktop\Folders\Programming\C# NET - Builds\StrPrsL</BaseOutputPath>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>
