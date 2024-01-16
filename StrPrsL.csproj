@@ -6,10 +6,17 @@
     <Nullable>disable</Nullable>
     <UseWPF>true</UseWPF>
     <SignAssembly>True</SignAssembly>
+    <ApplicationIcon>StrPrsL_Logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="30x30SquareLogov2Cropped.png" />
+    <None Remove="Logov2Cropped.png" />
     <None Remove="Scripting\SyntaxHighlighting.xshd" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="StrPrsL_Logo.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +48,11 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="30x30SquareLogov2Cropped.png" />
+    <Resource Include="Logov2Cropped.png" />
   </ItemGroup>
 
 </Project>
