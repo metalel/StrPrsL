@@ -5189,7 +5189,7 @@
         <Setter Property="WindowChrome.WindowChrome">
             <Setter.Value>
                 <WindowChrome
-                    CaptionHeight="26"
+                    CaptionHeight="16"
                     CornerRadius="0"
                     GlassFrameThickness="1"
                     NonClientFrameEdges="None"
@@ -5206,18 +5206,18 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}">
                             <Grid>
-                                <AdornerDecorator Margin="0,30,0,0">
+                                <AdornerDecorator Margin="0,22,0,0">
                                     <ContentPresenter />
                                 </AdornerDecorator>
                                 <Grid
                                     x:Name="titlebar"
-                                    Height="30"
+                                    Height="22"
                                     Margin="0"
                                     VerticalAlignment="Top"
                                     Background="{TemplateBinding BorderBrush}">
                                     <DockPanel Margin="0,0,130,0">
                                         <Image
-                                            Height="24"
+                                            Height="16"
                                             Margin="4,4,0,0"
                                             HorizontalAlignment="Left"
                                             VerticalAlignment="Top"
@@ -5225,7 +5225,7 @@
                                         <TextBlock
                                             Grid.Column="1"
                                             Width="Auto"
-                                            Margin="5,3"
+                                            Margin="5,0"
                                             HorizontalAlignment="Stretch"
                                             VerticalAlignment="Center"
                                             FontSize="14"
@@ -5344,18 +5344,18 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}">
                             <Grid>
-                                <AdornerDecorator Margin="0,30,0,0">
+                                <AdornerDecorator Margin="0,22,0,0">
                                     <ContentPresenter />
                                 </AdornerDecorator>
                                 <Grid
                                     x:Name="titlebar"
-                                    Height="30"
+                                    Height="22"
                                     Margin="0"
                                     VerticalAlignment="Top"
                                     Background="{TemplateBinding BorderBrush}">
                                     <DockPanel Margin="0,0,130,0">
                                         <Image
-                                            Height="24"
+                                            Height="16"
                                             Margin="4,4,0,0"
                                             HorizontalAlignment="Left"
                                             VerticalAlignment="Top"
