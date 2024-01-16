@@ -6,3 +6,4 @@ WPF rewrite of StrPrs macro scripting application.
 [AvalonEdit](http://avalonedit.net/)
 [Extended Wpf Toolkit](https://github.com/xceedsoftware/wpftoolkit)
 [ModernWpfUI](https://github.com/Kinnara/ModernWpf)
+[InputSimulatorPlus](https://github.com/TChatzigiannakis/InputSimulatorPlus)
