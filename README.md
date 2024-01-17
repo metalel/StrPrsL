@@ -65,20 +65,20 @@ These shortcuts can be triggered when editing the script.<br/>
 - `[` - Opens the autocomplete list for the functions available.
 
 # Examples
-Example files can be accessed by browsing the files in the "[Examples](/Examples%20Scripts)" folder
+Example files can be accessed by browsing the files in the "[Examples](/StrPrsL/Example%20Scripts)" folder
 
-- [Left and right click simulator](/StrPrsL/Examples%20Scripts/Left%20and%20right%20click%20simulator.str): Simulates using the Left Mouse Button with the F key and using the Right Mouse Button with the G key.
-- [Right click toggle](/StrPrsL/Examples%20Scripts/Right%20click%20toggle.str): Simulates toggling holding down the Right Mouse Button with the F key.
-- [Minimize active window](/StrPrsL/Examples%20Scripts/Minimize%20active%20window.str): Minimizes the currently active window with the F key.
-- [Hotkey on key](/StrPrsL/Examples%20Scripts/Hotkey%20on%20key.str): Template for triggering actions when the hotkey (F) is pressed or released.
-- [Hotkey toggle](/StrPrsL/Examples%20Scripts/Hotkey%20toggle.str): Template for toggling functionality in script when the hotkey (F) is pressed.
-- [Q spam](/StrPrsL/Examples%20Scripts/Q%20spam.str): Toggles the spamming of the Q key when the F key is pressed.
-- [Z spam](/StrPrsL/Examples%20Scripts/Z%20spam.str): Toggles the spamming of the Z key when the F key is pressed.
-- [Toggle sprint walk](/StrPrsL/Examples%20Scripts/Toggle%20sprint%20walk.str): Toggles holding down the LSHIFT and W keys when the F key is pressed.
-- [Dark Theme](/StrPrsL/Examples%20Scripts/Dark%20theme.str): Functionality toggle but with a Dark theme embedded into the script file.
-- [Pink Theme](/StrPrsL/Examples%20Scripts/Pink%20theme.str): Functionality toggle but with a Pink theme embedded into the script file.
-- [Green Theme](/StrPrsL/Examples%20Scripts/Green%20theme.str): Functionality toggle but with a Green theme embedded into the script file.
-- [Pixel color condition](/StrPrsL/Examples%20Scripts/Pixel%20color%20condition.str): Executes instructions if the pixel at 500, 500 is green.
+- [Left and right click simulator](/StrPrsL/Example%20Scripts/Left%20and%20right%20click%20simulator.str): Simulates using the Left Mouse Button with the F key and using the Right Mouse Button with the G key.
+- [Right click toggle](/StrPrsL/Example%20Scripts/Right%20click%20toggle.str): Simulates toggling holding down the Right Mouse Button with the F key.
+- [Minimize active window](/StrPrsL/Example%20Scripts/Minimize%20active%20window.str): Minimizes the currently active window with the F key.
+- [Hotkey on key](/StrPrsL/Example%20Scripts/Hotkey%20on%20key.str): Template for triggering actions when the hotkey (F) is pressed or released.
+- [Hotkey toggle](/StrPrsL/Example%20Scripts/Hotkey%20toggle.str): Template for toggling functionality in script when the hotkey (F) is pressed.
+- [Q spam](/StrPrsL/Example%20Scripts/Q%20spam.str): Toggles the spamming of the Q key when the F key is pressed.
+- [Z spam](/StrPrsL/Example%20Scripts/Z%20spam.str): Toggles the spamming of the Z key when the F key is pressed.
+- [Toggle sprint walk](/StrPrsL/Example%20Scripts/Toggle%20sprint%20walk.str): Toggles holding down the LSHIFT and W keys when the F key is pressed.
+- [Dark Theme](/StrPrsL/Example%20Scripts/Dark%20theme.str): Functionality toggle but with a Dark theme embedded into the script file.
+- [Pink Theme](/StrPrsL/Example%20Scripts/Pink%20theme.str): Functionality toggle but with a Pink theme embedded into the script file.
+- [Green Theme](/StrPrsL/Example%20Scripts/Green%20theme.str): Functionality toggle but with a Green theme embedded into the script file.
+- [Pixel color condition](/StrPrsL/Example%20Scripts/Pixel%20color%20condition.str): Executes instructions if the pixel at 500, 500 is green.
 > [!TIP]
 > These files offer quick templates to save you time for most of the common scripts you might write.
 
