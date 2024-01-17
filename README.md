@@ -14,8 +14,8 @@ I tried to keep the syntax and logic relatively beginner-friendly.
 > **I do not take responsibility for the damage that may be caused through the use or including the use of this software. Make sure you write your scripts and use the app responsibly.**
 
 # How does it work?
-[Command graph](/Page%20Assets/CommandGraph.png)
-[Function graph](/Page%20Assets/FunctionGraph.png)
+![Command graph](/Page%20Assets/CommandGraph.png)
+![Function graph](/Page%20Assets/FunctionGraph.png)
 ## Syntax
 In writing a script, you are supplying a set of instructions for the application to execute.
 In order for the application to interpret the instructions you've given, you must follow the syntactic set of rules.
