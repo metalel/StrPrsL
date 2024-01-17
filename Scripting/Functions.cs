@@ -41,6 +41,7 @@ namespace StrPrsL.Scripting
         private static int forLoopIndexBuffer;
         private static Interpreter.Variable variableSearchBuffer;
         private static MainWindow.Message messageBuffer;
+        private static System.Windows.Media.Color mediaColorBuffer;
 
         //Sleep-Wait Variables
         public static WaitingManager WaitingManager = new WaitingManager();
@@ -315,6 +316,11 @@ namespace StrPrsL.Scripting
 
         public static string Stringify(object value)
         {
+            mediaColorBuffer = (System.Windows.Media.Color)value;
+            if (value.GetType() == Helpers.mediaColorType)
+            {
+                return $"(A: {mediaColorBuffer.A}, R: {mediaColorBuffer.R}, G: {mediaColorBuffer.G}, B: {mediaColorBuffer.B})";
+            }
             return value.ToString();
         }
 

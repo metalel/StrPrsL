@@ -1090,7 +1090,7 @@ namespace StrPrsL.Scripting
                     case "tostring":
                         result = () =>
                         {
-                            return intermediate.GetParam(0).Invoke().ToString();
+                            return Functions.Stringify(intermediate.GetParam(0).Invoke());
                         };
                         break;
                     case "tobool":
@@ -1120,7 +1120,7 @@ namespace StrPrsL.Scripting
                     case "color":
                         result = () =>
                         {
-                            return Color.FromRgb(intermediate.InvokeParamCast<byte>(0), intermediate.InvokeParamCast<byte>(1), intermediate.InvokeParamCast<byte>(2));
+                            return Color.FromArgb(255, intermediate.InvokeParamCast<byte>(0), intermediate.InvokeParamCast<byte>(1), intermediate.InvokeParamCast<byte>(2));
                         };
                         break;
                     case "pixel":
@@ -1205,6 +1205,12 @@ namespace StrPrsL.Scripting
                         result = () =>
                         {
                             return Functions.GetTickDelta();
+                        };
+                        break;
+                    case "keyname":
+                        result = () =>
+                        {
+                            return intermediate.GetParam(0).Invoke().HandledCast<int>(intermediate).HandledCast<System.Windows.Input.Key>(intermediate).ToString();
                         };
                         break;
                     default:
