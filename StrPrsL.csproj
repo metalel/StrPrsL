@@ -9,6 +9,8 @@
     <ApplicationIcon>StrPrsL_Logo.ico</ApplicationIcon>
     <BaseOutputPath>E:\OldDesktop\Folders\Programming\C# NET - Builds\StrPrsL</BaseOutputPath>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <FileVersion>1.0.0.1</FileVersion>
+    <AssemblyVersion>1.0.0.1</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
