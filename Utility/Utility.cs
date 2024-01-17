@@ -207,6 +207,7 @@ namespace StrPrsL.Utility
         public static Type stringType = typeof(string);
         public static Type charType = typeof(char);
         public static Type byteType = typeof(byte);
+        public static Type mediaColorType = typeof(Color);
 
         public static string WriteStringTag(string Tag, string Value, string Identifier = "<,>,</")
         {
