@@ -86,7 +86,8 @@ namespace StrPrsL.Scripting.Completion
             new InstructionObject(InstructionType.Function, "AppPath", InstructionCategory.Properties, "Returns the working path for the executable of the app.", new InstructionParameter[] { }),
             new InstructionObject(InstructionType.Function, "Desktop", InstructionCategory.Properties, "Returns the user desktop path.", new InstructionParameter[] { }),
             new InstructionObject(InstructionType.Function, "Script", InstructionCategory.Properties, "Returns the loaded script file's path.", new InstructionParameter[] { }),
-            new InstructionObject(InstructionType.Function, "DeltaTime", InstructionCategory.Performance, "Returns the time ticks between the last and current call to this function.", new InstructionParameter[] { })
+            new InstructionObject(InstructionType.Function, "DeltaTime", InstructionCategory.Performance, "Returns the time ticks between the last and current call to this function.", new InstructionParameter[] { }),
+            new InstructionObject(InstructionType.Function, "KeyName", InstructionCategory.Conversion, "Gets the name of the key from KeyID.", new InstructionParameter[] { new InstructionParameter("KeyID", typeof(int)) })
         };
 
         public static InstructionObject GetByName(string name)
