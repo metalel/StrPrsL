@@ -1,0 +1,40 @@
+<Start()>
+{
+	<CVar(leftWasDown, 0)>
+	<CVar(rightWasDown, 0)>
+	<CVar(leftKeyID, 49)>
+	<CVar(rightKeyID, 50)>
+}
+
+<If([Hotkey([Var(leftKeyID)])])>
+{
+	<If([Equals([Var(leftWasDown)], 0)])>
+	{
+		<SVar(leftWasDown, 1)>
+		<LeftDown()>
+	}
+}
+<Else()>
+{
+	<If([Equals([Var(leftWasDown)], 1)])>
+	{
+		<SVar(leftWasDown, 0)>
+		<LeftUp()>
+	}
+}
+<If([Hotkey([Var(rightKeyID)])])>
+{
+	<If([Equals([Var(rightWasDown)], 0)])>
+	{
+		<SVar(rightWasDown, 1)>
+		<RightDown()>
+	}
+}
+<Else()>
+{
+	<If([Equals([Var(rightWasDown)], 1)])>
+	{
+		<SVar(rightWasDown, 0)>
+		<RightUp()>
+	}
+}

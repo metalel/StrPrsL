@@ -1,0 +1,21 @@
+<Start()>
+{
+	<CVar(keyWasDown, 0)>
+	<CVar(hotkeyID, 49)>
+}
+<If([Hotkey([Var(hotkeyID)])])>
+{
+	<If([Equals([Var(keyWasDown)], 0)])>
+	{
+		<SVar(keyWasDown, 1)>
+		<Print([KeyName([Var(hotkeyID)])], " pressed")>
+	}
+}
+<Else()>
+{
+	<If([Equals([Var(keyWasDown)], 1)])>
+	{
+		<SVar(keyWasDown, 0)>
+		<Print([KeyName([Var(hotkeyID)])], " released")>
+	}
+}

@@ -1,0 +1,36 @@
+<Start()>
+{
+	<CVar(toggle, 0)>
+	<CVar(hotkeyWasDown, 0)>
+}
+
+<If([Hotkey(49)])>
+{
+	<If([Equals([Var(hotkeyWasDown)], 0)])>
+	{
+		<SVar(hotkeyWasDown, 1)>
+		<If([Equals([Var(toggle)], 1)])>
+		{
+			<Print("Toggled off")>
+			<SVar(toggle, 0)>
+		}
+		<Else()>
+		{
+			<Print("Toggled on")>
+			<SVar(toggle, 1)>
+		}
+	}
+}
+<Else()>
+{
+	<If([Equals([Var(hotkeyWasDown)], 1)])>
+	{
+		<SVar(hotkeyWasDown, 0)>
+	}
+}
+
+<If([Equals([Var(toggle)], 1)])>
+{
+	<Print("Functionality is on")>
+}
+<ThemeColor>0,128,64</ThemeColor>

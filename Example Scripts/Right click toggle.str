@@ -1,0 +1,32 @@
+<Start()>
+{
+	<CVar(keyWasDown, 0)>
+	<CVar(hotkeyID, 49)>
+	<CVar(toggle, 0)>
+}
+<If([Hotkey([Var(hotkeyID)])])>
+{
+	<If([Equals([Var(keyWasDown)], 0)])>
+	{
+		<SVar(keyWasDown, 1)>
+		<If([Equals([Var(toggle)], 0)])>
+		{
+			<SVar(toggle, 1)>
+			<RightDown()>
+			<Print("Toggle on")>
+		}
+		<Else()>
+		{
+			<SVar(toggle, 0)>
+			<RightUp()>
+			<Print("Toggle off")>
+		}
+	}
+}
+<Else()>
+{
+	<If([Equals([Var(keyWasDown)], 1)])>
+	{
+		<SVar(keyWasDown, 0)>
+	}
+}
