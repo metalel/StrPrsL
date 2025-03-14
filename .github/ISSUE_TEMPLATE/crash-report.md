@@ -1,5 +1,5 @@
 ---
-name: Bug report
+name: Crash report
 about: Create a report to help us improve
 title: "[CTD] A new bug report"
 labels: bug, CTD
